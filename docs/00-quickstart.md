@@ -49,20 +49,16 @@ jev-router --help
 
 ### 1. CLI Wrapper
 
-The simplest approach. Launch your agent through `jev-router`:
+The simplest approach. Launch your agent through `jev-router run --agent <name>`:
 
 ```bash
-jev-router claude    # Claude Code with automatic routing
-jev-router codex     # OpenAI Codex with automatic routing
-jev-router opencode  # OpenCode with automatic routing
+jev-router run --agent claude_code  # Claude Code with automatic routing
+jev-router run --agent codex        # OpenAI Codex with automatic routing
+jev-router run --agent opencode     # OpenCode with automatic routing
 ```
 
-Or explicitly specify the agent:
-
-```bash
-jev-router run --agent claude
-jev-router run --agent codex
-```
+`--agent` defaults to `claude_code`. Run `jev-router agents` to see the full list of
+registered adapter names.
 
 The router auto-detects the agent, starts a local proxy, and routes each model request through JEV.
 
@@ -77,6 +73,10 @@ jev-router doctor     # Diagnose configuration and adapter compatibility
 ```
 
 ### 2. Reverse Proxy
+
+> **Not yet implemented.** `src/jev_router/transport/` has `HttpTransport`, `SseTransport`,
+> and `WebsocketTransport`, but there is no `--proxy` CLI flag or standalone proxy server yet.
+> The strategy below describes the target design from `ARCHITECTURE.md`, not current behavior.
 
 Set your agent's `base_url` to the JEV local proxy:
 
@@ -95,6 +95,11 @@ jev-router --proxy
 Then configure your agent to use `http://localhost:PORT` as its provider endpoint.
 
 ### 3. SDK Adapter
+
+> **Not yet implemented.** There is no `JEVRouter` or `JEVRoutedModel` class in
+> `src/jev_router/` today — DeepAgents integration currently goes through
+> `adapters/deepagents/adapter.py` and `middleware.py` like the other adapters. The example
+> below describes the target design from `ARCHITECTURE.md`, not current behavior.
 
 For agents embedded as Python/TypeScript libraries (DeepAgents, custom agents):
 
@@ -173,7 +178,7 @@ agents:
   auto_detect: true
 ```
 
-For full configuration options, see **§53-§54** in [15-configuration-cli.md](./15-configuration-cli.md).
+For full configuration options, see [09-configuration.md](./09-configuration.md).
 
 ---
 
@@ -186,7 +191,7 @@ For full configuration options, see **§53-§54** in [15-configuration-cli.md](.
 | Routing too slow | Check `jev-router status` and `JEV_ROUTER_DEBUG=1` |
 | Wrong model selected | Use explicit model choice: `jev-router claude --model claude-opus` |
 
-For detailed diagnostics, see **§64** (Compatibility Detection) and **§63** (Doctor Command) in [15-configuration-cli.md](./15-configuration-cli.md).
+Run `jev-router doctor` for environment diagnostics.
 
 ---
 
@@ -199,4 +204,4 @@ To add support for a new coding agent:
 3. Register in `src/jev_router/adapters/registry.py`
 4. Add fixtures and tests
 
-No changes to core router, policy, or JEV auth are needed. See **§39** (Generic Adapter SDK) and **§40** (Plugin Architecture) in [05-agent-adapters.md](./05-agent-adapters.md).
+No changes to core router, policy, or JEV auth are needed. See [07-architectural-rules.md](./07-architectural-rules.md) and `AGENTS.md`'s "Common workflows" section for the full checklist.

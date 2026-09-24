@@ -160,11 +160,11 @@ Each coding agent gets its own adapter — the core router never changes.
 
 | Agent | Status |
 |---|---|
-| Claude Code | 🟡 Planned |
-| OpenAI Codex | 🟡 Planned |
-| OpenCode | 🟡 Planned |
-| DeepAgents | 🟡 Planned |
-| Hermes | 🟡 Planned |
+| Claude Code | 🟢 Implemented |
+| OpenAI Codex | 🟢 Implemented |
+| OpenCode | 🟢 Implemented |
+| DeepAgents | 🟢 Implemented |
+| Hermes | 🟢 Implemented |
 
 Adding a new adapter requires only:
 1. Create the adapter module
@@ -204,12 +204,15 @@ pip install -e .
 ```
 src/jev_router/
 ├── cli/          # Command-line interface
-├── core/         # Router, policy, resolver, state
+├── core/         # Router, policy, resolver
 ├── contracts/    # NormalizedRequest, ModelSpec types
 ├── adapters/     # Agent-specific adapters
 ├── providers/    # Provider integrations
 ├── jev/          # JEV API client
+├── transport/    # HTTP/SSE/WS forwarding
+├── state/        # Per-turn/session persistence
 ├── config/       # Runtime configuration
+├── security/     # Secrets/redaction
 └── observability/# Logs, metrics, explanations
 ```
 
@@ -218,29 +221,29 @@ src/jev_router/
 ## Roadmap
 
 ### Phase 1 — Core Router
-- [ ] JEV API client
-- [ ] Normalized request schema
-- [ ] Policy engine
-- [ ] Model registry
-- [ ] Session/turn state
-- [ ] Fallback behavior
-- [ ] Unit tests
+- [x] JEV API client
+- [x] Normalized request schema
+- [x] Policy engine
+- [x] Model registry
+- [x] Session/turn state
+- [x] Fallback behavior
+- [x] Unit tests
 
 ### Phase 2 — First Agent Adapters
-- [ ] Claude Code
-- [ ] Codex
-- [ ] OpenCode
+- [x] Claude Code
+- [x] Codex
+- [x] OpenCode
 
 ### Phase 3 — SDK-Based Agents
-- [ ] DeepAgents
-- [ ] Hermes
+- [x] DeepAgents
+- [x] Hermes
 - [ ] Generic SDK adapter interface
 
 ### Phase 4 — Developer Experience
-- [ ] CLI
-- [ ] Configuration file
-- [ ] Routing explanation
-- [ ] Structured logs
+- [x] CLI
+- [x] Configuration file
+- [x] Routing explanation
+- [x] Structured logs
 - [ ] Debug mode
 
 ### Phase 5 — Advanced Routing
