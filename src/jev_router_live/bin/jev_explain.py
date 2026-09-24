@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Port of jev-router's ``bin/jev-explain.mjs``."""
+"""Prints the explanation report for the last routing decision in a session."""
 from __future__ import annotations
 
 import os

@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""Port of jev-router's ``bin/jev-codex.mjs`` + ``src/codex-cli.mjs``.
-
-Launches the real OpenAI Codex CLI with the local per-turn routing proxy in front of it.
-"""
+"""Launches the real OpenAI Codex CLI with the local per-turn routing proxy in front of it."""
 from __future__ import annotations
 
 import os

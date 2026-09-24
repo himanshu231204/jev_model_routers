@@ -1,4 +1,4 @@
-"""Port of jev-router's ``src/codex-proxy.mjs``: the OpenAI Codex per-turn routing proxy."""
+"""The OpenAI Codex per-turn routing proxy."""
 from __future__ import annotations
 
 import http.client

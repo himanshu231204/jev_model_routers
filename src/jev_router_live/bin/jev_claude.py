@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""Port of jev-router's ``bin/jev-claude.mjs``.
-
-Launches the real Claude Code CLI with the local per-turn routing proxy in front of it.
-"""
+"""Launches the real Claude Code CLI with the local per-turn routing proxy in front of it."""
 from __future__ import annotations
 
 import json

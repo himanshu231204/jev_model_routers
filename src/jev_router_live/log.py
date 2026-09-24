@@ -1,4 +1,4 @@
-"""Port of jev-router's ``src/log.mjs``."""
+"""File-based logging that never corrupts an interactive CLI's own terminal UI."""
 from __future__ import annotations
 
 import os

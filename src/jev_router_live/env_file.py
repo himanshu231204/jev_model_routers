@@ -1,5 +1,4 @@
-"""Minimal ``.env``-style loader (Node's ``process.loadEnvFile`` has no stdlib Python
-equivalent). Existing environment variables always win."""
+"""Minimal ``.env``-style loader. Existing environment variables always win."""
 from __future__ import annotations
 
 import os

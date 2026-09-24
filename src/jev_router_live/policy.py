@@ -1,4 +1,4 @@
-"""Port of jev-router's ``src/policy.mjs``."""
+"""The pure routing decision function: turns a Jev answer into the tier to run."""
 from __future__ import annotations
 
 from typing import Any

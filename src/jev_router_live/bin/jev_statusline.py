@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""Port of jev-router's ``bin/jev-statusline.mjs``.
-
-Status line for Claude Code. Claude Code pipes session JSON on stdin and renders whatever
+"""Status line for Claude Code. Claude Code pipes session JSON on stdin and renders whatever
 this prints. See https://code.claude.com/docs/en/statusline
 """
 from __future__ import annotations

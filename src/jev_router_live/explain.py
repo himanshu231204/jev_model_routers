@@ -1,4 +1,4 @@
-"""Port of jev-router's ``src/explain.mjs``."""
+"""Renders the human-readable explanation report for the last routing decision."""
 from __future__ import annotations
 
 from typing import Any

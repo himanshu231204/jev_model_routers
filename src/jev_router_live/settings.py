@@ -1,4 +1,4 @@
-"""Port of jev-router's ``src/settings.mjs``."""
+"""Restores Claude Code's saved default model on exit, so the sentinel model never sticks."""
 from __future__ import annotations
 
 import json

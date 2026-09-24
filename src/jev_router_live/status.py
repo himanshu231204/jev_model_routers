@@ -1,4 +1,4 @@
-"""Port of jev-router's ``src/status.mjs``."""
+"""Per-session routing decision file, read by the status line and ``jev-explain``."""
 from __future__ import annotations
 
 import json

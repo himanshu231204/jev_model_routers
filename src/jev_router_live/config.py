@@ -1,7 +1,4 @@
-"""Every routing decision knob lives here, so the whole policy is reviewable in one file.
-
-Direct port of gargpratyush/jev-router's ``src/config.mjs``.
-"""
+"""Every routing decision knob lives here, so the whole policy is reviewable in one file."""
 from __future__ import annotations
 
 import os

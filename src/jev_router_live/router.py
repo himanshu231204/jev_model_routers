@@ -1,4 +1,4 @@
-"""Port of jev-router's ``src/router.mjs``.
+"""Asks Jev which exact model fits a prompt.
 
 No Python TypeSafe SDK exists, so this talks to the System One HTTP API directly with
 stdlib ``urllib`` (zero runtime deps), the same approach ``jev_router.jev.client`` already

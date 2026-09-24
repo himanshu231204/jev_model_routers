@@ -1,4 +1,4 @@
-"""Port of jev-router's ``src/proxy.mjs``: the Claude Code per-turn routing proxy.
+"""The Claude Code per-turn routing proxy.
 
 A local HTTP server sits between Claude Code and ``api.anthropic.com``. Claude Code is told
 to use it as ``ANTHROPIC_BASE_URL`` and to offer a sentinel "Jev Router" row in `/model`
@@ -179,7 +179,7 @@ class _ConvoState:
 
 
 class _Convos:
-    """Bounded LRU-ish map of conversation key -> routing state, mirroring proxy.mjs's cap."""
+    """Bounded LRU-ish map of conversation key -> routing state."""
 
     def __init__(self, limit: int = 50) -> None:
         self._data: dict[str, _ConvoState] = {}
