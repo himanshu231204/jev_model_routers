@@ -9,4 +9,7 @@ def validate(config: dict) -> dict:
         v = config.get("jev", {}).get(k)
         if v is not None and (not isinstance(v, int) or v <= 0):
             raise ValueError(f"jev.{k} must be positive int")
+    c = config.get("jev", {}).get("client", "stdlib")
+    if c not in ("stdlib", "sdk"):
+        raise ValueError("jev.client must be stdlib|sdk")
     return config
