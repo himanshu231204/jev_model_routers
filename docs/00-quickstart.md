@@ -56,19 +56,24 @@ The simplest approach. Launch your agent through `jev-router run --agent <name>`
 ```bash
 jev-router run --agent claude_code  # Claude Code with automatic routing
 jev-router run --agent codex        # OpenAI Codex with automatic routing
-jev-router run --agent opencode     # OpenCode with automatic routing
+jev-router run --agent hermes       # Hermes Agent with automatic routing
 ```
 
 `--agent` defaults to `claude_code`. Run `jev-router agents` to see the full list of
 registered adapter names.
 
 `jev-router run` makes **one JEV routing decision at session start**, then launches the real
-agent binary (`claude`, `codex`, or `opencode`) via `subprocess.run` with that model applied,
-inheriting stdio for a normal interactive session. This is *not* per-turn routing — there is no
-live proxy intercepting requests mid-session yet (see "Reverse Proxy" below), so the model
-picked at launch stays fixed for the whole session. `deepagents` has no standalone CLI binary
-and raises a clear error if launched this way; it's embedded via
-`adapters/deepagents/adapter.py`/`middleware.py` instead.
+agent binary via `subprocess.run` with that model applied (`claude --model <m>`,
+`codex --model <m>`, or `hermes chat --model <m>`), inheriting stdio for a normal interactive
+session. This is *not* per-turn routing — there is no live proxy intercepting requests
+mid-session yet (see "Reverse Proxy" below), so the model picked at launch stays fixed for the
+whole session.
+
+Two adapters raise a clear error instead of launching, rather than faking a working command:
+- `opencode` — its interactive CLI (`opencode [directory]`) has no top-level `--model` flag;
+  `--model` only exists under `opencode run`, a one-shot non-interactive mode.
+- `deepagents` — has no standalone CLI binary at all; it's embedded via
+  `adapters/deepagents/adapter.py`/`middleware.py` instead.
 
 Additional commands:
 

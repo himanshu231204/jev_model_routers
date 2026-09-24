@@ -38,9 +38,14 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   `AgentAdapter.launch_command(model)` + `subprocess.run`, after one JEV routing decision at
   session start. This is session-start routing only, not per-turn — there is still no live
   proxy that intercepts mid-session requests (`transport/` only sends outbound; nothing
-  listens). `deepagents.launch_command` raises `NotImplementedError` since it has no CLI
-  binary. The Reverse Proxy and SDK Adapter integration strategies in
-  `docs/00-quickstart.md` remain unimplemented.
+  listens). `launch_command` was verified against each real installed CLI's `--help`, not
+  guessed: `claude --model <m>` and `hermes chat --model <m>` are correct; `codex --model <m>`
+  is unverified (binary not available to test against). `opencode.launch_command` and
+  `deepagents.launch_command` both raise `NotImplementedError` rather than emit a broken
+  command — opencode's interactive CLI has no top-level `--model` flag, and deepagents has no
+  CLI binary at all. `HermesAdapter.detect()` now uses `shutil.which("hermes")` like every
+  other adapter (it was hardcoded to always return `False`). The Reverse Proxy and SDK Adapter
+  integration strategies in `docs/00-quickstart.md` remain unimplemented.
 - README's directory sketch and roadmap checkboxes lag behind the code (they were written
   pre-implementation and haven't been updated). Trust `src/` and `ARCHITECTURE.md` over
   README prose when they disagree.

@@ -1,10 +1,11 @@
 from __future__ import annotations
+import shutil
 from jev_router.contracts.agents import AgentCapabilities
 from jev_router.contracts.requests import NormalizedRequest, Message
 from jev_router.adapters.hermes.config import split_model
 class HermesAdapter:
     name = "hermes"
-    def detect(self) -> bool: return False
+    def detect(self) -> bool: return shutil.which("hermes") is not None
     def capabilities(self) -> AgentCapabilities:
         return AgentCapabilities(supports_custom_provider=True, supports_custom_base_url=True)
     def normalize_request(self, raw: dict):
@@ -20,4 +21,4 @@ class HermesAdapter:
         return {**raw, "provider": provider, "model": name}
     def is_new_turn(self, raw: dict) -> bool: return not bool(raw.get("tool_result", False))
     def conversation_key(self, raw: dict) -> str: return str(raw.get("session_id", ""))
-    def launch_command(self, model: str) -> list[str]: return ["hermes", "--model", model]
+    def launch_command(self, model: str) -> list[str]: return ["hermes", "chat", "--model", model]
