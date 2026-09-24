@@ -18,3 +18,5 @@ class ClaudeCodeAdapter:
         return not bool(raw.get("tool_result")) and "tool_calls" not in str(raw.get("messages", ""))
     def conversation_key(self, raw: dict) -> str:
         return str(raw.get("session_id", ""))
+    def launch_command(self, model: str) -> list[str]:
+        return ["claude", "--model", model]

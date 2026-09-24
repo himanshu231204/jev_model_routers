@@ -62,7 +62,13 @@ jev-router run --agent opencode     # OpenCode with automatic routing
 `--agent` defaults to `claude_code`. Run `jev-router agents` to see the full list of
 registered adapter names.
 
-The router auto-detects the agent, starts a local proxy, and routes each model request through JEV.
+`jev-router run` makes **one JEV routing decision at session start**, then launches the real
+agent binary (`claude`, `codex`, or `opencode`) via `subprocess.run` with that model applied,
+inheriting stdio for a normal interactive session. This is *not* per-turn routing — there is no
+live proxy intercepting requests mid-session yet (see "Reverse Proxy" below), so the model
+picked at launch stays fixed for the whole session. `deepagents` has no standalone CLI binary
+and raises a clear error if launched this way; it's embedded via
+`adapters/deepagents/adapter.py`/`middleware.py` instead.
 
 Additional commands:
 

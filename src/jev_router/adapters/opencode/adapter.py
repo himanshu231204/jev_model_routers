@@ -20,3 +20,4 @@ class OpenCodeAdapter:
         return {**raw, **provider_entry(model), "model": model}
     def is_new_turn(self, raw: dict) -> bool: return not bool(raw.get("tool_result", False))
     def conversation_key(self, raw: dict) -> str: return str(raw.get("session_id", ""))
+    def launch_command(self, model: str) -> list[str]: return ["opencode", "--model", model]

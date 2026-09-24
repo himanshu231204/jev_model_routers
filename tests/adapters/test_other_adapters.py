@@ -19,3 +19,13 @@ def test_contract_opencode_hermes_deepagents():
         n = a.normalize_request(_load(name))
         assert n.session_id and n.prompt
         assert "m-strong" in str(a.apply_model(_load(name), "m-strong"))
+
+def test_launch_command_cli_agents():
+    assert get_adapter("codex").launch_command("m") == ["codex", "--model", "m"]
+    assert get_adapter("opencode").launch_command("m") == ["opencode", "--model", "m"]
+    assert get_adapter("hermes").launch_command("m") == ["hermes", "--model", "m"]
+
+def test_launch_command_deepagents_not_implemented():
+    import pytest
+    with pytest.raises(NotImplementedError):
+        get_adapter("deepagents").launch_command("m")
