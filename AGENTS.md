@@ -13,18 +13,17 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   files/packages, do not restructure or rename packages to suit yourself.
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `docs/08-project-structure.md`). `python -m pytest` passes (58 tests as of this
-  writing). Add tests alongside any change per the testing rules below.
+  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (58 tests as of this writing). Add
+  tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
-- **`ARCHITECTURE.md` (~223 lines, 15 sections) is the design source of truth.** `docs/01`–
-  `docs/14` are a verbatim, section-for-section split of it — "do not edit here; propose
-  changes against the source section" — so never hand-edit `docs/01`–`docs/14`; change
-  `ARCHITECTURE.md` and regenerate the split instead. `docs/00-quickstart.md` is a standalone
-  integration guide, not a section split, and may be hand-edited directly to stay accurate to
-  `src/`. `docs/README.md` indexes the split. All of `docs/` is tracked and committed — it is
-  not local scratch. Only `.superpowers/`, `.tmp/`, and `.agents/` are local/untracked work;
-  leave those alone.
+- **`ARCHITECTURE.md` (~204 lines, 15 sections) is the design source of truth — read it
+  directly.** `docs/` holds only `docs/README.md` (points here) and `docs/quickstart.md`
+  (integration guide, hand-maintained, may be edited directly to stay accurate to `src/`). The
+  old one-file-per-section split (`docs/01`–`docs/14`) and five empty placeholder directories
+  were removed as unnecessary duplication. All of `docs/` is tracked and committed — it is not
+  local scratch. Only `.superpowers/`, `.tmp/`, and `.agents/` are local/untracked work; leave
+  those alone.
 - **The JEV client is wired to TypeSafe's real System One API**, not a placeholder. `jev/
   client.py` calls `POST https://api.typesafe.ai/v1/systemone` with `TYPESAFE_API_KEY` as the
   bearer token — the same env var name TypeSafe's own SDK reads by default, even though this
@@ -45,7 +44,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   command — opencode's interactive CLI has no top-level `--model` flag, and deepagents has no
   CLI binary at all. `HermesAdapter.detect()` now uses `shutil.which("hermes")` like every
   other adapter (it was hardcoded to always return `False`). The Reverse Proxy and SDK Adapter
-  integration strategies in `docs/00-quickstart.md` remain unimplemented.
+  integration strategies in `docs/quickstart.md` remain unimplemented.
 - README's Roadmap section was removed (it was pre-implementation and out of date); README no
   longer tracks phase-by-phase progress. Trust `src/` and `ARCHITECTURE.md` over README prose
   if either ever disagrees with it.

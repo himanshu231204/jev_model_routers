@@ -3,7 +3,8 @@
 > **Status:** Target architecture / implementation blueprint
 > **Project:** `jev_model_router`
 > **Primary goal:** Build an agent-agnostic model router that can sit in front of coding agents (Claude Code, OpenAI Codex, OpenCode, DeepAgents, Hermes Agent, and future/custom agents).
-> **Source:** This file is the single source of truth. It is also split, section-for-section, into `docs/` (14 indexed files). See §13 below.
+> **Source:** This file is the single source of truth for design. `docs/` holds only an index
+> (`docs/README.md`) and the integration quickstart (`docs/quickstart.md`) — see §13 below.
 
 ---
 
@@ -17,8 +18,10 @@ The coding agent owns the developer experience, tool execution, permissions, ses
 
 JEV Model Router owns the **routing decision**:
 
-```
-Coding Agent → normalized request → JEV Model Router → provider-native request → Model/Provider
+```mermaid
+graph LR
+    A[Coding Agent] -->|normalized request| B[JEV Model Router]
+    B -->|provider-native request| C[Model/Provider]
 ```
 
 The router's 8 responsibilities:
@@ -53,31 +56,35 @@ JEV does NOT own: filesystem manipulation, code execution, terminal commands, pa
 
 The pipeline contract creates a hard boundary between integration code and routing logic:
 
-```
-AgentRequest → NormalizedRequest → JEVDecision → PolicyDecision → ModelResolution → ProviderRequest → AgentResponse
+```mermaid
+graph LR
+    A[AgentRequest] --> B[NormalizedRequest] --> C[JEVDecision] --> D[PolicyDecision] --> E[ModelResolution] --> F[ProviderRequest] --> G[AgentResponse]
 ```
 
 Type model:
 
-```
-AgentRequest (agent, session, turn, messages, tools, current_model, available_models, metadata)
-  → NormalizedRequest (task, context, tools, candidates)
-  → JEVDecision (requested_model/tier, confidence, task_complexity, reasoning_required, tool_complexity, context_pressure)
-  → PolicyDecision (final_model, reason, changed, fallback, pinned_until)
-  → ModelResolution (concrete model from available ∩ agent-compatible ∩ provider-compatible ∩ policy-allowed)
-  → Agent-native request
+```mermaid
+graph TD
+    A["AgentRequest<br/>(agent, session, turn, messages, tools, current_model, available_models, metadata)"]
+    B["NormalizedRequest<br/>(task, context, tools, candidates)"]
+    C["JEVDecision<br/>(requested_model/tier, confidence, task_complexity, reasoning_required, tool_complexity, context_pressure)"]
+    D["PolicyDecision<br/>(final_model, reason, changed, fallback, pinned_until)"]
+    E["ModelResolution<br/>(concrete model from available ∩ agent-compatible ∩ provider-compatible ∩ policy-allowed)"]
+    F["Agent-native request"]
+    A --> B --> C --> D --> E --> F
 ```
 
 ---
 
 ## 5. High-Level System Architecture
 
-```
-Developer → AI Coding Agent → Agent Adapter → Request Normalizer → Routing Context → Feature Extractor
-  → Router Core → JEV System → JEV Decision → Policy Engine → Model Resolver
-  → Model Registry + Capability Matrix → Final Routing Decision
-  → Session/Turn State → Agent Adapter → Transport/Proxy → Provider Adapter → Model Provider API
-  → Observability (logs, metrics, explain API)
+```mermaid
+flowchart TD
+    A[Developer] --> B[AI Coding Agent] --> C[Agent Adapter] --> D[Request Normalizer] --> E[Routing Context] --> F[Feature Extractor]
+    F --> G[Router Core] --> H[JEV System] --> I[JEV Decision] --> J[Policy Engine] --> K[Model Resolver]
+    K --> L["Model Registry + Capability Matrix"] --> M[Final Routing Decision]
+    M --> N["Session/Turn State"] --> O[Agent Adapter] --> P[Transport/Proxy] --> Q[Provider Adapter] --> R[Model Provider API]
+    R --> S["Observability (logs, metrics, explain API)"]
 ```
 
 Dependency direction is one-way: **CLI → adapters → core → contracts**. Providers and transports are injected, never imported by policy code.
@@ -136,8 +143,6 @@ src/jev_router/
 ├── jev/  · transport/  · state/  · config/  · observability/  · security/
 ```
 
-Full layout with all files: `docs/08-project-structure.md`.
-
 Dependency direction: `CLI → Adapters → Core → Contracts`.
 
 Interface contracts: `Router.route()`, `Policy.evaluate()`, `ModelResolver.resolve()`, `AgentAdapter.*`.
@@ -152,8 +157,6 @@ Default config: `jev.timeout_ms: 1500`, `deadline_ms: 3000`, `max_retries: 1`.
 
 Routing is disabled (passthrough) when `TYPESAFE_API_KEY` is absent.
 
-Full config schema and examples: `docs/09-configuration.md`.
-
 ---
 
 ## 11. Testing Rules
@@ -163,44 +166,32 @@ Full config schema and examples: `docs/09-configuration.md`.
 - Adapter tests are fixture-driven (`tests/fixtures/`).
 - Every non-trivial change to policy, resolution, overrides, fresh-turn detection, state isolation, or fallback needs a test.
 
-Full testing architecture: `docs/10-testing-rules.md`.
-
 ---
 
 ## 12. Implementation Phases
 
 Phase 0 — Contracts · Phase 1 — JEV Core · Phase 2 — Model Registry · Phase 3 — State · Phase 4 — Claude Code Adapter · Phase 5 — Codex · Phase 6 — OpenCode · Phase 7 — Hermes · Phase 8 — DeepAgents · Phase 9 — Observability.
 
-Full roadmap and acceptance criteria: `docs/11-implementation-phases.md`.
+All phases are implemented; see `AGENTS.md`'s "Current state of this repo" for what's real vs.
+still a gap (e.g. per-turn routing via a live proxy is not yet built).
 
 ---
 
 ## 13. Documentation Structure
 
-The `docs/` directory contains a verbatim, one-file-per-section split of this architecture
-document, plus a standalone quickstart guide:
+`docs/` holds exactly two files:
 
 ```
 docs/
-├── README.md                        # Index and section-to-file map
-├── 00-quickstart.md                 # Integration guide, all three strategies (not a §-split)
-├── 01-executive-summary.md          # §1  Executive Summary
-├── 02-design-goals-and-non-goals.md # §2-§3  Design goals, non-goals
-├── 03-core-principle.md             # §4  Core architectural principle
-├── 04-system-architecture.md        # §5  High-level system architecture
-├── 05-major-components.md           # §6  Major components
-├── 06-routing-invariants.md         # §7  Routing invariants (must not regress)
-├── 07-architectural-rules.md        # §8  Architectural rules
-├── 08-project-structure.md          # §9  Project structure
-├── 09-configuration.md              # §10  Configuration
-├── 10-testing-rules.md              # §11  Testing rules
-├── 11-implementation-phases.md      # §12  Implementation phases
-├── 12-documentation-structure.md    # §13  This section
-├── 13-success-criterion.md          # §14  Success criterion
-└── 14-reference-material.md         # §15  Reference material
+├── README.md        # Points to this file and to quickstart.md
+└── quickstart.md # Integration guide: install, set TYPESAFE_API_KEY, CLI usage
 ```
 
-> **Note:** This file (`ARCHITECTURE.md`) remains the single source of truth. `docs/*` are verbatim splits — do not edit them; propose changes against the source section here.
+This file (`ARCHITECTURE.md`) is the single source of truth for design — read it directly
+rather than a mirrored split. `docs/` previously contained a one-file-per-section split (14
+files) plus five empty placeholder directories; both were removed as unnecessary duplication
+that had to be kept in sync by hand. `docs/quickstart.md` may be hand-edited directly to
+stay accurate to `src/`; propose design changes against this file.
 
 ---
 

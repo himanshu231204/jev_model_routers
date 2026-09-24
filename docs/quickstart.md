@@ -93,8 +93,10 @@ jev-router doctor     # Diagnose configuration and adapter compatibility
 
 Set your agent's `base_url` to the JEV local proxy:
 
-```
-Coding Agent → localhost:PORT (JEV Proxy) → upstream provider
+```mermaid
+graph LR
+    A[Coding Agent] --> B["localhost:PORT (JEV Proxy)"]
+    B --> C[Upstream Provider]
 ```
 
 The router intercepts model requests, rewrites the model identifier, and forwards to the original provider. Works with any agent that supports configurable `base_url`/provider endpoint.
@@ -136,29 +138,15 @@ The adapter intercepts the model invocation boundary:
 
 ## How It Works
 
-```
-Agent Request
-       │
-       ▼
-Adapter (agent-specific)
-       │
-       ▼
-Normalized Request
-       │
-       ▼
-JEV API  (what model should I use?)
-       │
-       ▼
-Policy Engine  (confidence, overrides, cost/latency)
-       │
-       ▼
-Model Resolver  (picks concrete model)
-       │
-       ▼
-Turn State  (pin model for the whole tool loop)
-       │
-       ▼
-Provider / Model  (execution)
+```mermaid
+flowchart TD
+    A[Agent Request] --> B["Adapter (agent-specific)"]
+    B --> C[Normalized Request]
+    C --> D["JEV API (what model should I use?)"]
+    D --> E["Policy Engine (confidence, overrides, cost/latency)"]
+    E --> F["Model Resolver (picks concrete model)"]
+    F --> G["Turn State (pin model for the whole tool loop)"]
+    G --> H["Provider / Model (execution)"]
 ```
 
 **Key invariants:**
@@ -191,7 +179,7 @@ agents:
   auto_detect: true
 ```
 
-For full configuration options, see [09-configuration.md](./09-configuration.md).
+For full configuration options, see `ARCHITECTURE.md` §10 (Configuration).
 
 ---
 
@@ -201,8 +189,8 @@ For full configuration options, see [09-configuration.md](./09-configuration.md)
 |---|---|
 | JEV unavailable | Router falls back to current model automatically |
 | Agent not detected | Run `jev-router doctor` to diagnose |
-| Routing too slow | Check `jev-router status` and `JEV_ROUTER_DEBUG=1` |
-| Wrong model selected | Use explicit model choice: `jev-router claude --model claude-opus` |
+| `opencode`/`deepagents` won't launch | Expected — their `launch_command` raises `NotImplementedError`; see "CLI Wrapper" above |
+| Wrong model routed | Check `jev-router status`/`explain`; there's no manual override flag on `run` yet, only the adapters' own `--model` once launched |
 
 Run `jev-router doctor` for environment diagnostics.
 
@@ -217,4 +205,5 @@ To add support for a new coding agent:
 3. Register in `src/jev_router/adapters/registry.py`
 4. Add fixtures and tests
 
-No changes to core router, policy, or JEV auth are needed. See [07-architectural-rules.md](./07-architectural-rules.md) and `AGENTS.md`'s "Common workflows" section for the full checklist.
+No changes to core router, policy, or JEV auth are needed. See `ARCHITECTURE.md` §8
+(Architectural Rules) and `AGENTS.md`'s "Common workflows" section for the full checklist.
