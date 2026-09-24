@@ -13,7 +13,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   files/packages, do not restructure or rename packages to suit yourself.
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (59 tests as of this writing). Add
+  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (67 tests as of this writing). Add
   tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
@@ -53,17 +53,42 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   claude_code` now actually launches `claude` (previously: `FileNotFoundError` dumped as a raw
   traceback). Missing-binary and launch-failure cases print a clean one-line error and return 1
   instead of crashing.
-- **Known gap: the default model catalog (`configs/default.yaml` `models.allow`) ships
-  placeholder-style ids** (`anthropic/claude-sonnet`, `anthropic/claude-opus`,
-  `openai/coding-strong`) that aren't valid values for any real consumer — not Claude Code's
-  `--model` flag (verified live: `claude` rejects `anthropic/claude-sonnet` as an unknown
-  model), and not the Anthropic/OpenAI API's `model` field either (`providers/anthropic.py`/
-  `openai.py` pass the id straight through as the literal API `model` value). There is no
-  per-agent model-name translation layer — `apply_model`/`launch_command` forward the router's
-  internal `ModelSpec.id` verbatim. Fixing this needs either real per-agent model ids in the
-  catalog or a translation layer per adapter; it's a design decision, not a one-line fix, so it
-  wasn't attempted here. Until it's resolved, `jev-router run` picks a real agent but the
-  `--model` value it passes may not be one that agent recognizes.
+- **`jev-router run` now takes `--prompt`/`-p`.** Without it, JEV is asked to route an empty
+  string and — live-verified — reliably returns confidence around 0.27 (below the `low`
+  threshold), so `core/policy.py` falls back (`reason=low_confidence_keep_current`) instead of
+  routing. The same real prompt live-verified confidence 0.97 for the same tier. Always pass
+  `--prompt` for a real routing decision; omitting it is a deliberate no-signal passthrough,
+  not a bug.
+- **`ClaudeCodeAdapter.launch_command` now translates catalog ids to real Claude Code
+  aliases** (`_MODEL_ALIASES` in `adapters/claude_code/adapter.py`: `anthropic/claude-sonnet`
+  → `sonnet`, `anthropic/claude-opus` → `opus`), fixing the "isn't described by this version's
+  model catalog" error `claude --model anthropic/claude-sonnet` produced before. Only these two
+  ids are mapped — `openai/coding-strong` and any other catalog id still pass through
+  unchanged, since only Claude Code's own aliases have been verified. `codex`/`hermes`/
+  `opencode` still receive the router's internal catalog id as-is; only `codex`'s `--model`
+  flag is documented to accept a bare model name, and none of the three have a verified
+  translation table the way `claude_code` now does.
+- **`cli/run.py`'s `_candidates()` now sets real `tier`/`capabilities`/`compatible_agents`**
+  via `_KNOWN_MODELS`, fixing model auto-detection. Previously every catalog entry got
+  `ModelSpec`'s bare defaults (`tier="balanced"`, identical capabilities, no
+  `compatible_agents`), so a JEV `"strong"` recommendation could never match any candidate's
+  tier and silently fell back to whichever entry the fallback tie-break happened to prefer.
+  Worse: with no `"fast"`-tier candidate in the default catalog at all, *every* `"fast"`
+  recommendation (the common case — most tasks are simple) fell back to the
+  highest-capability candidate, meaning trivial tasks were silently routed to `opus` — the
+  opposite of what "fast" means. Fixed by adding `anthropic/claude-fable` (real alias `fable`,
+  verified via `claude --help`) and `anthropic/claude-haiku` (real alias `haiku` — not listed
+  in `--help`'s examples but confirmed working: `claude --model haiku` passes model validation
+  and proceeds to a real API call, unlike a deliberately fake model name, which errors
+  immediately with `unrecognized_model`) as genuine fast-tier catalog entries, and assigning
+  real tier/capability/compatible-agent metadata to all five default ids. `fable` and `haiku`
+  share the same fast-tier capability score and `fable` is listed first, so it wins ties
+  deterministically; reorder `models.allow` to prefer `haiku` instead. Live-verified all three
+  tiers now resolve distinctly for `claude_code`: trivial → `anthropic/claude-fable`, medium →
+  `anthropic/claude-sonnet`, complex → `anthropic/claude-opus`. `compatible_agents` also now
+  correctly excludes `openai/coding-strong` from ever winning a `claude_code` launch. Ids not
+  in `_KNOWN_MODELS` (e.g. a user's custom catalog addition) still fall back to `ModelSpec`'s
+  lenient defaults rather than being rejected.
 - README's Roadmap section was removed (it was pre-implementation and out of date); README no
   longer tracks phase-by-phase progress. Trust `src/` and `ARCHITECTURE.md` over README prose
   if either ever disagrees with it.

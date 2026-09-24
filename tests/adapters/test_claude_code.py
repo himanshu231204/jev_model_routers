@@ -21,3 +21,10 @@ def test_apply_model_rewrites():
 def test_launch_command():
     a = ClaudeCodeAdapter()
     assert a.launch_command("claude-opus") == ["claude", "--model", "claude-opus"]
+
+def test_launch_command_translates_catalog_ids_to_real_aliases():
+    a = ClaudeCodeAdapter()
+    assert a.launch_command("anthropic/claude-fable") == ["claude", "--model", "fable"]
+    assert a.launch_command("anthropic/claude-haiku") == ["claude", "--model", "haiku"]
+    assert a.launch_command("anthropic/claude-sonnet") == ["claude", "--model", "sonnet"]
+    assert a.launch_command("anthropic/claude-opus") == ["claude", "--model", "opus"]
