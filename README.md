@@ -44,12 +44,15 @@ pip install jev-router
 
 ### 2. Set Your JEV API Key
 
+`jev/client.py` calls TypeSafe's Jev decision model through OpenRouter's Decisions API, so
+`JEV_API_KEY` should be an [OpenRouter](https://openrouter.ai/) API key.
+
 ```bash
 # Linux / macOS
-export JEV_API_KEY="your_jev_api_key"
+export JEV_API_KEY="your_openrouter_api_key"
 
 # Windows PowerShell
-$env:JEV_API_KEY="your_jev_api_key"
+$env:JEV_API_KEY="your_openrouter_api_key"
 ```
 
 > 🔒 Never commit or share your API key. Use `.env`, OS secret managers, or CI/CD secret stores.
@@ -107,7 +110,7 @@ Provider / Model  (execution)
 ### Prerequisites
 
 - **Python ≥ 3.11**
-- **JEV API key** (sign up at [JEV](https://jev.ai))
+- **An [OpenRouter](https://openrouter.ai/) API key** (used as `JEV_API_KEY` to reach TypeSafe's Jev model)
 
 ### From Source
 

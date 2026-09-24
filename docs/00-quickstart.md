@@ -17,14 +17,16 @@ This guide shows how to route your coding agent's model requests through JEV Mod
 ## Prerequisites
 
 - **Python ≥ 3.11**
-- **JEV API key** (sign up at [JEV](https://jev.ai))
+- **An [OpenRouter](https://openrouter.ai/) API key** — `jev/client.py` calls TypeSafe's Jev
+  decision model through OpenRouter's Decisions API (`POST /api/alpha/decisions`), so
+  `JEV_API_KEY` holds an OpenRouter key, not a separate "JEV" credential.
 
 ```bash
 # Linux / macOS
-export JEV_API_KEY="your_jev_api_key"
+export JEV_API_KEY="your_openrouter_api_key"
 
 # Windows PowerShell
-$env:JEV_API_KEY="your_jev_api_key"
+$env:JEV_API_KEY="your_openrouter_api_key"
 ```
 
 ---

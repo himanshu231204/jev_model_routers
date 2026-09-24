@@ -13,15 +13,22 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   files/packages, do not restructure or rename packages to suit yourself.
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `docs/08-project-structure.md`). `python -m pytest` passes (49 tests as of this
+  (see `docs/08-project-structure.md`). `python -m pytest` passes (51 tests as of this
   writing). Add tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
-- **`ARCHITECTURE.md` (~2,900 lines) is the design source of truth.** `docs/01…19` are verbatim
-  splits of its sections and say "do not edit here; propose changes against the source section" —
-  never edit `docs/*`; change `ARCHITECTURE.md` instead.
-- `docs/*`, `skills-lock.json`, `.superpowers/`, `.tmp/`, `.agents/` are local/untracked work —
-  leave them alone.
+- **`ARCHITECTURE.md` (~223 lines, 15 sections) is the design source of truth.** `docs/01…14`
+  are verbatim splits of its sections and say "do not edit here; propose changes against the
+  source section" — never edit `docs/01`–`docs/14`; change `ARCHITECTURE.md` instead.
+  `docs/00-quickstart.md` is a standalone integration guide, not a section split, and may be
+  hand-edited directly to stay accurate to `src/`.
+- `docs/README.md` and `docs/01`–`docs/14` are tracked, committed files, not local scratch —
+  treat them like any other versioned doc. `.superpowers/`, `.tmp/`, `.agents/` are local/
+  untracked work; leave those alone.
+- **`jev/client.py` targets TypeSafe's real Jev model via OpenRouter's Decisions API**
+  (`POST https://openrouter.ai/api/alpha/decisions`), not a placeholder host. `JEV_API_KEY`
+  holds an OpenRouter API key. `jev/questions.py` builds the `{model, state, questions}`
+  request; `jev/normalize.py` parses the `{answers: {tier: {choice, confidence}}}` response.
 - README's directory sketch and roadmap checkboxes lag behind the code (they were written
   pre-implementation and haven't been updated). Trust `src/` and `ARCHITECTURE.md` over
   README prose when they disagree.
