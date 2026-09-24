@@ -14,7 +14,9 @@ class DeepAgentsAdapter:
                                  conversation_id=raw.get("session_id", ""), turn_id="t1", prompt=text,
                                  messages=[Message(role="user", content=text)], current_model=raw.get("model"),
                                  available_models=raw.get("available_models", []), tools=[], tool_count=0,
-                                 metadata={"subagent_id": raw.get("subagent_id")}, is_subagent=bool(raw.get("subagent_id")))
+                                 metadata={"subagent_id": raw.get("subagent_id"), "tool_result": bool(raw.get("tool_result", False))},
+                                 is_subagent=bool(raw.get("subagent_id")),
+                                 is_new_turn=not bool(raw.get("tool_result", False)))
     def apply_model(self, raw: dict, model: str) -> dict: return {**raw, "model": model}
-    def is_new_turn(self, raw: dict) -> bool: return True
+    def is_new_turn(self, raw: dict) -> bool: return not bool(raw.get("tool_result", False))
     def conversation_key(self, raw: dict) -> str: return str(raw.get("session_id", ""))

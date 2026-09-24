@@ -13,8 +13,10 @@ class OpenCodeAdapter:
         return NormalizedRequest(request_id="req_oc", agent="opencode", session_id=raw.get("session_id", ""),
                                  conversation_id=raw.get("session_id", ""), turn_id="t1", prompt=text,
                                  messages=[Message(role="user", content=text)], current_model=raw.get("model"),
-                                 available_models=raw.get("available_models", []), tools=[], tool_count=0, metadata={})
+                                 available_models=raw.get("available_models", []), tools=[], tool_count=0,
+                                 metadata={"tool_result": bool(raw.get("tool_result", False))},
+                                 is_new_turn=not bool(raw.get("tool_result", False)))
     def apply_model(self, raw: dict, model: str) -> dict:
         return {**raw, **provider_entry(model), "model": model}
-    def is_new_turn(self, raw: dict) -> bool: return True
+    def is_new_turn(self, raw: dict) -> bool: return not bool(raw.get("tool_result", False))
     def conversation_key(self, raw: dict) -> str: return str(raw.get("session_id", ""))
