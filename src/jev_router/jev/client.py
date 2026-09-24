@@ -4,7 +4,7 @@ import json, os, time, urllib.request
 from jev_router.jev.normalize import normalize_jev_payload
 from jev_router.jev.schema import JEVDecision
 
-_ENDPOINT = os.environ.get("JEV_ENDPOINT", "https://jev.example.com/v1/route")
+_ENDPOINT = os.environ.get("JEV_ENDPOINT", "https://openrouter.ai/api/alpha/decisions")
 
 class JevClient:
     def __init__(self, timeout_ms: int = 1500, deadline_ms: int = 3000, max_retries: int = 1):
