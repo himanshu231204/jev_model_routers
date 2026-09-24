@@ -36,3 +36,22 @@ def test_client_missing_key_returns_error():
     c = JevClient(timeout_ms=100, deadline_ms=200, max_retries=0)
     dec, ms, err = c.ask({"prompt": "hi"})
     assert dec is None and err is not None
+
+def test_client_enforces_hard_wall_clock_deadline(monkeypatch):
+    """urlopen's own `timeout` only bounds individual socket ops, not the whole call -- a
+    slow-but-not-individually-timed-out request must still be cut off at deadline_ms."""
+    import time
+    import jev_router.jev.client as client_mod
+
+    def slow_urlopen(req, timeout=None):
+        time.sleep(2)  # far longer than the deadline below
+        raise AssertionError("should have been abandoned before completing")
+
+    monkeypatch.setattr(client_mod.urllib.request, "urlopen", slow_urlopen)
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
+    c = client_mod.JevClient(timeout_ms=5000, deadline_ms=100, max_retries=0)
+    start = time.time()
+    dec, ms, err = c.ask({"prompt": "hi"})
+    wall_clock = time.time() - start
+    assert dec is None and err is not None
+    assert wall_clock < 1.0  # returned promptly despite the 2s-sleeping mock
