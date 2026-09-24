@@ -1,129 +1,17 @@
-"""Asks Jev which exact model fits a prompt.
+"""Live-proxy routing dispatcher: stdlib HTTP by default, SDK when JEV_CLIENT=sdk.
 
-No Python TypeSafe SDK exists, so this talks to the System One HTTP API directly with
-stdlib ``urllib`` (zero runtime deps), the same approach ``jev_router.jev.client`` already
-uses elsewhere in this repository.
+``proxy.py`` and ``codex_proxy.py`` import ``ask_jev`` from this module; the name and
+signature are unchanged. The stdlib implementation moved verbatim to
+``stdlib_router.stdlib_ask_jev``; the best-effort SDK path lives in
+``sdk_router.sdk_ask_jev``.
 """
 from __future__ import annotations
 
-import json
-import os
-import threading
-import time
-import urllib.request
-from typing import Any
 
-from jev_router_live.config import (
-    COMPLEXITY_MAX_SCORE,
-    CONTEXT_WINDOW_TOKENS,
-    QUESTIONS,
-    THRESHOLDS,
-    question_for_models,
-)
-from jev_router_live.log import log
-
-_ENDPOINT = os.environ.get("JEV_ENDPOINT", "https://api.typesafe.ai/v1/systemone")
-
-
-def _post(payload: dict, headers: dict, timeout_s: float) -> dict:
-    req = urllib.request.Request(
-        _ENDPOINT, data=json.dumps(payload).encode(), headers=headers, method="POST"
-    )
-    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-        return json.loads(resp.read().decode() or "{}")
-
-
-def _post_with_wall_clock_timeout(payload: dict, headers: dict, timeout_s: float) -> tuple[dict | None, Exception | None]:
-    """Runs one HTTP attempt on a daemon thread, bounded by a real wall-clock deadline.
-
-    ``urlopen``'s own timeout only bounds individual socket operations (connect, each read)
-    -- a request whose DNS/connect/TLS/read steps are each fast but add up can run far longer
-    than that. Joining a daemon thread against a wall-clock timeout makes the deadline real
-    without hanging process exit if the thread is still stuck.
-    """
-    result: dict[str, Any] = {}
-
-    def target() -> None:
-        try:
-            result["raw"] = _post(payload, headers, timeout_s)
-        except Exception as exc:  # noqa: BLE001 - reported to caller, not raised here
-            result["error"] = exc
-
-    thread = threading.Thread(target=target, daemon=True)
-    thread.start()
-    thread.join(timeout_s)
-    if thread.is_alive():
-        return None, TimeoutError("jev_wall_clock_deadline_exceeded")
-    if "error" in result:
-        return None, result["error"]
-    return result.get("raw"), None
-
-
-def ask_jev(*, prompt: str, current: str, context_tokens: int, models: list[dict]) -> dict | None:
-    """Asks Jev which exact model fits this prompt. Returns None on any failure, which the
-    policy layer reads as "keep the current model" -- routing must never block a prompt.
-
-    Returns {"choice": str, "confidence": float, "probabilities": dict, "metrics": dict,
-    "request": dict, "response": dict, "ms": int} or None.
-    """
-    if not models:
-        return None
-    api_key = os.environ.get("JEV_API_KEY") or os.environ.get("TYPESAFE_API_KEY")
-    if not api_key:
-        return None
-
-    started = time.time()
-    request = {
-        "state": {
-            "request": prompt,
-            "session": {"current_model": current, "context_tokens": context_tokens},
-            "environment": {"available_models": [m["id"] for m in models]},
-        },
-        "questions": {**QUESTIONS, "model": question_for_models(models)},
-    }
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-
-    deadline = THRESHOLDS.jev_deadline_ms / 1000.0
-    attempt = 0
-    result: dict | None = None
-    err: Exception | None = None
-    while True:
-        remaining = deadline - (time.time() - started)
-        if remaining <= 0:
-            err = TimeoutError("jev_deadline_exceeded")
-            break
-        timeout_s = min(THRESHOLDS.jev_timeout_ms / 1000.0, remaining)
-        result, err = _post_with_wall_clock_timeout(request, headers, timeout_s)
-        if err is None:
-            break
-        attempt += 1
-        if attempt > THRESHOLDS.jev_max_retries or time.time() - started >= deadline:
-            break
-
-    ms = int((time.time() - started) * 1000)
-    if err is not None or not isinstance(result, dict):
-        log(f"routing failed, keeping {current}: {err}")
-        return None
-
-    try:
-        answers = result["answers"]
-        answer = answers["model"]
-        task_complexity = answers["task_complexity"]["score"]
-        reasoning_required = answers["reasoning_required"]["score"]
-        tool_complexity = answers["tool_complexity"]["score"]
-    except (KeyError, TypeError) as exc:
-        log(f"routing failed, keeping {current}: malformed Jev response ({exc})")
-        return None
-
-    return {
-        **answer,
-        "request": request,
-        "response": result,
-        "metrics": {
-            "taskComplexity": task_complexity / COMPLEXITY_MAX_SCORE,
-            "reasoningRequired": reasoning_required / COMPLEXITY_MAX_SCORE,
-            "toolComplexity": tool_complexity / COMPLEXITY_MAX_SCORE,
-            "contextSize": min(context_tokens / CONTEXT_WINDOW_TOKENS, 1),
-        },
-        "ms": ms,
-    }
+def ask_jev(*, prompt, current, context_tokens, models):
+    import os
+    if os.environ.get("JEV_CLIENT") == "sdk":
+        from jev_router_live.sdk_router import sdk_ask_jev
+        return sdk_ask_jev(prompt=prompt, current=current, context_tokens=context_tokens, models=models)
+    from jev_router_live.stdlib_router import stdlib_ask_jev
+    return stdlib_ask_jev(prompt=prompt, current=current, context_tokens=context_tokens, models=models)
