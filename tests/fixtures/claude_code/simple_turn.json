@@ -1,0 +1,1 @@
+{"session_id": "sess_1", "messages": [{"role": "user", "content": "refactor auth"}], "model": "claude-sonnet", "stream": true, "agent_version": "2026-09"}

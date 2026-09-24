@@ -1,1 +1,2 @@
-"""Routing core: router, policy, decision, classification, resolution, overrides, and lifecycle."""
+from jev_router.core.router import Router
+__all__ = ["Router"]

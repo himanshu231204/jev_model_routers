@@ -1,1 +1,9 @@
 """Abstract store interface for session and turn routing state."""
+from __future__ import annotations
+from typing import Protocol
+from jev_router.core.lifecycle import TurnState
+
+class Store(Protocol):
+    def pin(self, key: str, state: TurnState) -> None: ...
+    def get(self, key: str) -> TurnState | None: ...
+    def clear(self, key: str) -> None: ...
