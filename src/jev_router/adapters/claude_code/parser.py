@@ -4,6 +4,8 @@ from jev_router.contracts.requests import NormalizedRequest, Message
 def parse(raw: dict) -> NormalizedRequest:
     msgs = [Message(role=m.get("role", "user"), content=str(m.get("content", ""))) for m in raw.get("messages", [])]
     prompt = next((m.content for m in reversed(msgs) if m.role == "user"), "")
+    if not prompt:
+        prompt = str(raw.get("prompt", "") or raw.get("input_text", ""))
     return NormalizedRequest(request_id=raw.get("request_id", "req_claude"), agent="claude_code",
                              agent_version=raw.get("agent_version"), session_id=raw.get("session_id", ""),
                              conversation_id=raw.get("session_id", ""), turn_id=raw.get("turn_id", "t1"),
