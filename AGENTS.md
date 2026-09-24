@@ -102,7 +102,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
 
 - Python **>= 3.11**, `src/` layout, setuptools build, package name `jev_router`.
 - **Zero runtime dependencies (`dependencies = []`) — stdlib only.** Adding a dependency is a
-  significant decision; justify it (ARCHITECTURE.md §29: dependency rules). `pytest` is a
+  significant decision; justify it (ARCHITECTURE.md §8: dependency rules). `pytest` is a
   test-only extra (`[project.optional-dependencies] test = ["pytest"]`), not a runtime dep.
 - Install: `pip install -e .` (exposes the `jev-router` console script →
   `jev_router.cli.main:main`, which dispatches to `run`/`agents`/`models`/`status`/

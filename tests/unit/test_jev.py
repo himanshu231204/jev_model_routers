@@ -62,3 +62,8 @@ def test_resolve_client_kind_defaults_stdlib():
     assert resolve_client_kind({"jev": {"client": "sdk"}}, {}) == "sdk"
     assert resolve_client_kind({}, {"JEV_CLIENT": "sdk"}) == "sdk"
     assert resolve_client_kind({}, {"JEV_CLIENT": "bogus"}) == "stdlib"
+
+def test_run_uses_stdlib_by_default(monkeypatch):
+    from jev_router.jev import get_jev_client, JevClient
+    monkeypatch.delenv("JEV_CLIENT", raising=False)
+    assert isinstance(get_jev_client({"jev": {"client": "stdlib"}}), JevClient)

@@ -157,6 +157,8 @@ Default config: `jev.timeout_ms: 1500`, `deadline_ms: 3000`, `max_retries: 1`.
 
 Routing is disabled (passthrough) when `TYPESAFE_API_KEY` is absent.
 
+SDK transport is opt-in (`jev.client: sdk` / `JEV_CLIENT=sdk`, `pip install jev-router[typesafe]`); default stdlib preserves zero-deps.
+
 ---
 
 ## 11. Testing Rules
