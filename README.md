@@ -61,10 +61,12 @@ $env:TYPESAFE_API_KEY="your_typesafe_api_key"
 ### 3. Run
 
 ```bash
-jev-router
+jev-router run --agent claude_code
 ```
 
-That's it — the router starts and begins intercepting requests, routing each one through JEV.
+This makes one JEV routing decision for the session, then launches `claude` with that model
+applied. `--agent` defaults to `claude_code`; run `jev-router agents` to see every registered
+adapter and whether it's detected on your machine.
 
 ---
 
@@ -116,7 +118,7 @@ Provider / Model  (execution)
 ### From Source
 
 ```bash
-git clone https://github.com/your-org/jev_model_routers.git
+git clone https://github.com/himanshu231204/jev_model_routers.git
 cd jev_model_routers
 pip install -e .
 ```
@@ -183,10 +185,16 @@ No changes to the core router, policy, JEV auth, or state layer needed.
 ## Command Line
 
 ```bash
-jev-router                    # Start the router
-jev-router --config path.yaml # Use a specific config file
-jev-router --no-routing       # Passthrough mode (no routing)
+jev-router run --agent <name>  # Route once at session start, launch the agent (default: claude_code)
+jev-router agents              # List registered adapters and detection status
+jev-router models              # Show the configured model catalog
+jev-router status              # Show current routing state (enabled/passthrough)
+jev-router explain             # Explain the last routing decision
+jev-router doctor              # Diagnose environment/config (Python version, key presence)
 ```
+
+Passthrough (no routing) happens automatically whenever `TYPESAFE_API_KEY` is unset — there's
+no separate flag for it.
 
 ---
 
@@ -219,42 +227,6 @@ src/jev_router/
 ├── security/     # Secrets/redaction
 └── observability/# Logs, metrics, explanations
 ```
-
----
-
-## Roadmap
-
-### Phase 1 — Core Router
-- [x] JEV API client
-- [x] Normalized request schema
-- [x] Policy engine
-- [x] Model registry
-- [x] Session/turn state
-- [x] Fallback behavior
-- [x] Unit tests
-
-### Phase 2 — First Agent Adapters
-- [x] Claude Code
-- [x] Codex
-- [x] OpenCode
-
-### Phase 3 — SDK-Based Agents
-- [x] DeepAgents
-- [x] Hermes
-- [ ] Generic SDK adapter interface
-
-### Phase 4 — Developer Experience
-- [x] CLI
-- [x] Configuration file
-- [x] Routing explanation
-- [x] Structured logs
-- [ ] Debug mode
-
-### Phase 5 — Advanced Routing
-- [ ] Context-aware routing
-- [ ] Cost-aware routing
-- [ ] Latency-aware routing
-- [ ] Routing analytics
 
 ---
 
