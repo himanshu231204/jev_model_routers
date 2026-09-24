@@ -27,8 +27,12 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   untracked work; leave those alone.
 - **`jev/client.py` targets TypeSafe's real System One API**
   (`POST https://api.typesafe.ai/v1/systemone`), not a placeholder host. `JEV_API_KEY` holds a
-  TypeSafe API key. `jev/questions.py` builds the `{model, state, questions}` request;
-  `jev/normalize.py` parses the `{answers: {tier: {choice, confidence}}}` response.
+  TypeSafe API key — it's a project-chosen name, not the TypeSafe SDK's own `TYPESAFE_API_KEY`
+  convention, because this router calls the raw HTTP API via stdlib `urllib` (zero runtime
+  deps) rather than depending on TypeSafe's SDK; don't "fix" it to match the SDK's env var.
+  `jev/questions.py` builds the `{model, state, questions}` request; `jev/normalize.py` parses
+  the `{answers: {tier: {choice, confidence}}}` response — both match the SDK's own request/
+  response shape, verified against `docs.typesafe.ai/sdk/python` and `/sdk/javascript`.
 - README's directory sketch and roadmap checkboxes lag behind the code (they were written
   pre-implementation and haven't been updated). Trust `src/` and `ARCHITECTURE.md` over
   README prose when they disagree.
