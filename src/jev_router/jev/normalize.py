@@ -1,4 +1,8 @@
-"""Normalize external JEV responses at this boundary only."""
+"""Normalize external JEV responses at this boundary only.
+
+Expects OpenRouter Decisions API shape: {"answers": {"tier": {"type": "choice",
+"choice": "fast"|"balanced"|"strong", "probabilities": {...}, "confidence": float}}}.
+"""
 from __future__ import annotations
 from jev_router.jev.schema import JEVDecision
 
@@ -11,14 +15,10 @@ def _clamp(v, default=0.0):
 def normalize_jev_payload(raw: dict | None, latency_ms: int) -> JEVDecision | None:
     if not isinstance(raw, dict):
         return None
-    choice = raw.get("choice") or raw.get("selected_model") or raw.get("tier")
-    m = raw.get("metrics", {}) if isinstance(raw.get("metrics"), dict) else {}
+    answers = raw.get("answers", {})
+    tier_answer = answers.get("tier", {}) if isinstance(answers, dict) else {}
+    choice = tier_answer.get("choice") if isinstance(tier_answer, dict) else None
     tier = choice if choice in ("fast", "balanced", "strong") else None
-    model = choice if tier is None and isinstance(choice, str) else None
-    return JEVDecision(requested_model=model, requested_tier=tier,
-                       confidence=_clamp(raw.get("confidence")),
-                       task_complexity=_clamp(m.get("task_complexity")),
-                       reasoning_required=_clamp(m.get("reasoning_required")),
-                       tool_complexity=_clamp(m.get("tool_complexity")),
-                       context_pressure=_clamp(m.get("context_size")),
+    return JEVDecision(requested_model=None, requested_tier=tier,
+                       confidence=_clamp(tier_answer.get("confidence")),
                        latency_ms=latency_ms, raw_response=None)

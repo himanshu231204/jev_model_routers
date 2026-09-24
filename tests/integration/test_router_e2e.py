@@ -6,7 +6,7 @@ from jev_router.adapters.registry import get_adapter
 class MockJev:
     def ask(self, payload):
         from jev_router.jev.schema import JEVDecision
-        assert "prompt" in payload
+        assert "prompt" in payload["state"] and "tier" in payload["questions"]
         return JEVDecision(requested_tier="balanced", confidence=0.7), 3, None
 
 def test_e2e_fake_agent_router_fake_provider():
