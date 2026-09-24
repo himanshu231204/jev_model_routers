@@ -93,8 +93,10 @@ jev-router doctor     # Diagnose configuration and adapter compatibility
 
 Set your agent's `base_url` to the JEV local proxy:
 
-```
-Coding Agent → localhost:PORT (JEV Proxy) → upstream provider
+```mermaid
+graph LR
+    A[Coding Agent] --> B["localhost:PORT (JEV Proxy)"]
+    B --> C[Upstream Provider]
 ```
 
 The router intercepts model requests, rewrites the model identifier, and forwards to the original provider. Works with any agent that supports configurable `base_url`/provider endpoint.
@@ -136,29 +138,15 @@ The adapter intercepts the model invocation boundary:
 
 ## How It Works
 
-```
-Agent Request
-       │
-       ▼
-Adapter (agent-specific)
-       │
-       ▼
-Normalized Request
-       │
-       ▼
-JEV API  (what model should I use?)
-       │
-       ▼
-Policy Engine  (confidence, overrides, cost/latency)
-       │
-       ▼
-Model Resolver  (picks concrete model)
-       │
-       ▼
-Turn State  (pin model for the whole tool loop)
-       │
-       ▼
-Provider / Model  (execution)
+```mermaid
+flowchart TD
+    A[Agent Request] --> B["Adapter (agent-specific)"]
+    B --> C[Normalized Request]
+    C --> D["JEV API (what model should I use?)"]
+    D --> E["Policy Engine (confidence, overrides, cost/latency)"]
+    E --> F["Model Resolver (picks concrete model)"]
+    F --> G["Turn State (pin model for the whole tool loop)"]
+    G --> H["Provider / Model (execution)"]
 ```
 
 **Key invariants:**

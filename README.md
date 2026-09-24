@@ -14,14 +14,10 @@ JEV Model Router sits between your coding agent (Claude Code, Codex, OpenCode, a
 
 Instead of forcing every coding task onto a single model, it uses the **JEV API** to pick the best available model for each task — automatically.
 
-```
- ┌──────────────┐       ┌──────────────────┐       ┌──────────────┐
- │  Coding Agent │──────▶│  JEV Model Router │──────▶│   Models     │
- │               │       │                   │       │  (Claude,    │
- │  Claude Code  │       │  Normalize → Ask  │       │   OpenAI,    │
- │  Codex        │       │  Policy → Resolve │       │   Gemini…)   │
- │  OpenCode     │       │                   │       │              │
- └──────────────┘       └──────────────────┘       └──────────────┘
+```mermaid
+graph LR
+    A["Coding Agent<br/>Claude Code · Codex · OpenCode"] --> B["JEV Model Router<br/>Normalize → Ask → Policy → Resolve"]
+    B --> C["Models<br/>(Claude, OpenAI, Gemini…)"]
 ```
 
 **Why?** A simple README edit doesn't need the strongest model. A complex architectural refactor does. JEV makes that decision per turn, so you always get the right model without changing how you work.
@@ -76,26 +72,14 @@ For the full integration guide, see [`docs/quickstart.md`](docs/quickstart.md).
 
 Every coding request goes through a simple pipeline:
 
-```
-Agent Request
-      │
-      ▼
-Adapter (agent-specific)
-      │
-      ▼
-Normalized Request  (common format)
-      │
-      ▼
-JEV API  (asks: what model should I use?)
-      │
-      ▼
-Policy Engine  (applies rules, confidence checks, overrides)
-      │
-      ▼
-Model Resolver  (picks the concrete model)
-      │
-      ▼
-Provider / Model  (execution)
+```mermaid
+flowchart TD
+    A[Agent Request] --> B["Adapter (agent-specific)"]
+    B --> C["Normalized Request (common format)"]
+    C --> D["JEV API (asks: what model should I use?)"]
+    D --> E["Policy Engine (rules, confidence checks, overrides)"]
+    E --> F["Model Resolver (picks the concrete model)"]
+    F --> G["Provider / Model (execution)"]
 ```
 
 ### Key Principles

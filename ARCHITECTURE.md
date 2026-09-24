@@ -18,8 +18,10 @@ The coding agent owns the developer experience, tool execution, permissions, ses
 
 JEV Model Router owns the **routing decision**:
 
-```
-Coding Agent → normalized request → JEV Model Router → provider-native request → Model/Provider
+```mermaid
+graph LR
+    A[Coding Agent] -->|normalized request| B[JEV Model Router]
+    B -->|provider-native request| C[Model/Provider]
 ```
 
 The router's 8 responsibilities:
@@ -54,31 +56,35 @@ JEV does NOT own: filesystem manipulation, code execution, terminal commands, pa
 
 The pipeline contract creates a hard boundary between integration code and routing logic:
 
-```
-AgentRequest → NormalizedRequest → JEVDecision → PolicyDecision → ModelResolution → ProviderRequest → AgentResponse
+```mermaid
+graph LR
+    A[AgentRequest] --> B[NormalizedRequest] --> C[JEVDecision] --> D[PolicyDecision] --> E[ModelResolution] --> F[ProviderRequest] --> G[AgentResponse]
 ```
 
 Type model:
 
-```
-AgentRequest (agent, session, turn, messages, tools, current_model, available_models, metadata)
-  → NormalizedRequest (task, context, tools, candidates)
-  → JEVDecision (requested_model/tier, confidence, task_complexity, reasoning_required, tool_complexity, context_pressure)
-  → PolicyDecision (final_model, reason, changed, fallback, pinned_until)
-  → ModelResolution (concrete model from available ∩ agent-compatible ∩ provider-compatible ∩ policy-allowed)
-  → Agent-native request
+```mermaid
+graph TD
+    A["AgentRequest<br/>(agent, session, turn, messages, tools, current_model, available_models, metadata)"]
+    B["NormalizedRequest<br/>(task, context, tools, candidates)"]
+    C["JEVDecision<br/>(requested_model/tier, confidence, task_complexity, reasoning_required, tool_complexity, context_pressure)"]
+    D["PolicyDecision<br/>(final_model, reason, changed, fallback, pinned_until)"]
+    E["ModelResolution<br/>(concrete model from available ∩ agent-compatible ∩ provider-compatible ∩ policy-allowed)"]
+    F["Agent-native request"]
+    A --> B --> C --> D --> E --> F
 ```
 
 ---
 
 ## 5. High-Level System Architecture
 
-```
-Developer → AI Coding Agent → Agent Adapter → Request Normalizer → Routing Context → Feature Extractor
-  → Router Core → JEV System → JEV Decision → Policy Engine → Model Resolver
-  → Model Registry + Capability Matrix → Final Routing Decision
-  → Session/Turn State → Agent Adapter → Transport/Proxy → Provider Adapter → Model Provider API
-  → Observability (logs, metrics, explain API)
+```mermaid
+flowchart TD
+    A[Developer] --> B[AI Coding Agent] --> C[Agent Adapter] --> D[Request Normalizer] --> E[Routing Context] --> F[Feature Extractor]
+    F --> G[Router Core] --> H[JEV System] --> I[JEV Decision] --> J[Policy Engine] --> K[Model Resolver]
+    K --> L["Model Registry + Capability Matrix"] --> M[Final Routing Decision]
+    M --> N["Session/Turn State"] --> O[Agent Adapter] --> P[Transport/Proxy] --> Q[Provider Adapter] --> R[Model Provider API]
+    R --> S["Observability (logs, metrics, explain API)"]
 ```
 
 Dependency direction is one-way: **CLI → adapters → core → contracts**. Providers and transports are injected, never imported by policy code.
