@@ -1,1 +1,1 @@
-"""Request classification: fresh user turn versus tool-loop continuation, auxiliary, or manual requests."""
+"""Classification of normalized requests: fresh user turn versus tool-loop continuation, auxiliary, or manual."""
