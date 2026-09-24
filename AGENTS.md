@@ -26,12 +26,12 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   treat them like any other versioned doc. `.superpowers/`, `.tmp/`, `.agents/` are local/
   untracked work; leave those alone.
 - **`jev/client.py` targets TypeSafe's real System One API**
-  (`POST https://api.typesafe.ai/v1/systemone`), not a placeholder host. `JEV_API_KEY` holds a
-  TypeSafe API key — it's a project-chosen name, not the TypeSafe SDK's own `TYPESAFE_API_KEY`
-  convention, because this router calls the raw HTTP API via stdlib `urllib` (zero runtime
-  deps) rather than depending on TypeSafe's SDK; don't "fix" it to match the SDK's env var.
-  `jev/questions.py` builds the `{model, state, questions}` request; `jev/normalize.py` parses
-  the `{answers: {tier: {choice, confidence}}}` response — both match the SDK's own request/
+  (`POST https://api.typesafe.ai/v1/systemone`), not a placeholder host. `TYPESAFE_API_KEY`
+  holds a TypeSafe API key — same env var name TypeSafe's own SDK reads by default, even
+  though this router calls the raw HTTP API directly via stdlib `urllib` (zero runtime deps)
+  rather than depending on TypeSafe's SDK. `jev/questions.py` builds the
+  `{model, state, questions}` request; `jev/normalize.py` parses the
+  `{answers: {tier: {choice, confidence}}}` response — both match the SDK's own request/
   response shape, verified against `docs.typesafe.ai/sdk/python` and `/sdk/javascript`.
 - README's directory sketch and roadmap checkboxes lag behind the code (they were written
   pre-implementation and haven't been updated). Trust `src/` and `ARCHITECTURE.md` over
@@ -68,7 +68,7 @@ Dependency direction is one-way: **CLI → adapters → core → contracts**.
 
 ## Routing invariants (must not regress)
 
-- **JEV is the only routing authority.** `JEV_API_KEY` is read exclusively by `jev/client.py`;
+- **JEV is the only routing authority.** `TYPESAFE_API_KEY` is read exclusively by `jev/client.py`;
   no other module may build JEV auth headers. Never hard-code, commit, or print the key.
   `core/classifier.py` must not grow into an independent LLM router.
 - **One routing decision per fresh user turn.** Pin the selected model for the whole tool loop;
@@ -90,14 +90,14 @@ Dependency direction is one-way: **CLI → adapters → core → contracts**.
   user config > defaults**.
 - `configs/default.yaml`: `jev.timeout_ms: 1500`, `deadline_ms: 3000`, `max_retries: 1`.
   Routing is on the interactive hot path — keep calls short; retry only within the deadline.
-- Routing is disabled (passthrough) when `JEV_API_KEY` is absent — the CLI must report this
+- Routing is disabled (passthrough) when `TYPESAFE_API_KEY` is absent — the CLI must report this
   clearly instead of crashing a running session.
 
 ## Testing rules
 
 - pytest only; `pyproject.toml` `[tool.pytest.ini_options] testpaths = ["tests"]`.
 - **Mock the JEV API in all default tests.** Live tests are opt-in: `JEV_LIVE_TESTS=1` plus
-  `JEV_API_KEY` in the environment; never put a real key in fixtures.
+  `TYPESAFE_API_KEY` in the environment; never put a real key in fixtures.
 - Adapter tests are fixture-driven (`tests/fixtures/`): capture sanitized upstream requests
   when a protocol changes, note the agent version, and assert expected routing behavior.
 - Every non-trivial change to policy, resolution, overrides, fresh-turn detection, state

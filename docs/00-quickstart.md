@@ -19,14 +19,14 @@ This guide shows how to route your coding agent's model requests through JEV Mod
 - **Python ≥ 3.11**
 - **A [TypeSafe](https://typesafe.ai/) API key** — `jev/client.py` calls TypeSafe's Jev
   decision model via TypeSafe's System One API (`POST https://api.typesafe.ai/v1/systemone`),
-  so `JEV_API_KEY` holds a TypeSafe key.
+  so `TYPESAFE_API_KEY` holds a TypeSafe key.
 
 ```bash
 # Linux / macOS
-export JEV_API_KEY="your_typesafe_api_key"
+export TYPESAFE_API_KEY="your_typesafe_api_key"
 
 # Windows PowerShell
-$env:JEV_API_KEY="your_typesafe_api_key"
+$env:TYPESAFE_API_KEY="your_typesafe_api_key"
 ```
 
 ---

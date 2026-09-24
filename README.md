@@ -45,15 +45,15 @@ pip install jev-router
 ### 2. Set Your JEV API Key
 
 `jev/client.py` calls TypeSafe's Jev decision model via TypeSafe's System One API
-(`https://api.typesafe.ai/v1/systemone`), so `JEV_API_KEY` should be a
+(`https://api.typesafe.ai/v1/systemone`), so `TYPESAFE_API_KEY` should be a
 [TypeSafe](https://typesafe.ai/) API key.
 
 ```bash
 # Linux / macOS
-export JEV_API_KEY="your_typesafe_api_key"
+export TYPESAFE_API_KEY="your_typesafe_api_key"
 
 # Windows PowerShell
-$env:JEV_API_KEY="your_typesafe_api_key"
+$env:TYPESAFE_API_KEY="your_typesafe_api_key"
 ```
 
 > 🔒 Never commit or share your API key. Use `.env`, OS secret managers, or CI/CD secret stores.
@@ -111,7 +111,7 @@ Provider / Model  (execution)
 ### Prerequisites
 
 - **Python ≥ 3.11**
-- **A [TypeSafe](https://typesafe.ai/) API key** (used as `JEV_API_KEY` to reach TypeSafe's Jev model)
+- **A [TypeSafe](https://typesafe.ai/) API key** (used as `TYPESAFE_API_KEY` to reach TypeSafe's Jev model)
 
 ### From Source
 

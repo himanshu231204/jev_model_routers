@@ -7,6 +7,6 @@ def test_agents_lists_registered():
 def test_status_reports_missing_key(capsys, monkeypatch):
     import os
     from jev_router.cli.status import run_status
-    monkeypatch.delenv("JEV_API_KEY", raising=False)
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
     run_status({})
     assert "passthrough" in capsys.readouterr().out.lower() or "disabled" in capsys.readouterr().out.lower()
