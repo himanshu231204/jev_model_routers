@@ -21,6 +21,10 @@ _KNOWN_MODELS = {
         "tier": "fast", "compatible_agents": ["claude_code", "opencode", "hermes"],
         "capabilities": ModelCapabilities(coding=4, reasoning=4, speed=9, cost=9),
     },
+    "anthropic/claude-haiku": {
+        "tier": "fast", "compatible_agents": ["claude_code", "opencode", "hermes"],
+        "capabilities": ModelCapabilities(coding=4, reasoning=4, speed=9, cost=9),
+    },
     "anthropic/claude-sonnet": {
         "tier": "balanced", "compatible_agents": ["claude_code", "opencode", "hermes"],
         "capabilities": ModelCapabilities(coding=7, reasoning=7),

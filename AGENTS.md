@@ -77,8 +77,13 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   recommendation (the common case — most tasks are simple) fell back to the
   highest-capability candidate, meaning trivial tasks were silently routed to `opus` — the
   opposite of what "fast" means. Fixed by adding `anthropic/claude-fable` (real alias `fable`,
-  verified via `claude --help`) as a genuine fast-tier catalog entry, and assigning real
-  tier/capability/compatible-agent metadata to all four default ids. Live-verified all three
+  verified via `claude --help`) and `anthropic/claude-haiku` (real alias `haiku` — not listed
+  in `--help`'s examples but confirmed working: `claude --model haiku` passes model validation
+  and proceeds to a real API call, unlike a deliberately fake model name, which errors
+  immediately with `unrecognized_model`) as genuine fast-tier catalog entries, and assigning
+  real tier/capability/compatible-agent metadata to all five default ids. `fable` and `haiku`
+  share the same fast-tier capability score and `fable` is listed first, so it wins ties
+  deterministically; reorder `models.allow` to prefer `haiku` instead. Live-verified all three
   tiers now resolve distinctly for `claude_code`: trivial → `anthropic/claude-fable`, medium →
   `anthropic/claude-sonnet`, complex → `anthropic/claude-opus`. `compatible_agents` also now
   correctly excludes `openai/coding-strong` from ever winning a `claude_code` launch. Ids not

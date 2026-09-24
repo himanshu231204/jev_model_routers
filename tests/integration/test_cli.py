@@ -76,6 +76,7 @@ def test_candidates_have_real_tiers_and_compatible_agents():
     candidates = _candidates(load())
     by_id = {c.id: c for c in candidates}
     assert by_id["anthropic/claude-fable"].tier == "fast"
+    assert by_id["anthropic/claude-haiku"].tier == "fast"
     assert by_id["anthropic/claude-sonnet"].tier == "balanced"
     assert by_id["anthropic/claude-opus"].tier == "strong"
     assert "claude_code" in by_id["anthropic/claude-opus"].compatible_agents

@@ -137,6 +137,7 @@ jev:
 models:
   allow:
     - anthropic/claude-fable   # fast tier
+    - anthropic/claude-haiku   # fast tier (alternate)
     - anthropic/claude-sonnet  # balanced tier
     - anthropic/claude-opus    # strong tier
     - openai/coding-strong     # strong tier (codex/opencode/hermes only)

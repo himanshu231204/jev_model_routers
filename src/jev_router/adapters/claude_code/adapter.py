@@ -11,6 +11,7 @@ from jev_router.adapters.claude_code.compatibility import normalize_version
 # will fail with Claude Code's own error, same as before this table existed.
 _MODEL_ALIASES = {
     "anthropic/claude-fable": "fable",
+    "anthropic/claude-haiku": "haiku",
     "anthropic/claude-sonnet": "sonnet",
     "anthropic/claude-opus": "opus",
 }
