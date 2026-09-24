@@ -13,7 +13,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   files/packages, do not restructure or rename packages to suit yourself.
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (59 tests as of this writing). Add
+  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (63 tests as of this writing). Add
   tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
@@ -53,17 +53,33 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   claude_code` now actually launches `claude` (previously: `FileNotFoundError` dumped as a raw
   traceback). Missing-binary and launch-failure cases print a clean one-line error and return 1
   instead of crashing.
-- **Known gap: the default model catalog (`configs/default.yaml` `models.allow`) ships
-  placeholder-style ids** (`anthropic/claude-sonnet`, `anthropic/claude-opus`,
-  `openai/coding-strong`) that aren't valid values for any real consumer — not Claude Code's
-  `--model` flag (verified live: `claude` rejects `anthropic/claude-sonnet` as an unknown
-  model), and not the Anthropic/OpenAI API's `model` field either (`providers/anthropic.py`/
-  `openai.py` pass the id straight through as the literal API `model` value). There is no
-  per-agent model-name translation layer — `apply_model`/`launch_command` forward the router's
-  internal `ModelSpec.id` verbatim. Fixing this needs either real per-agent model ids in the
-  catalog or a translation layer per adapter; it's a design decision, not a one-line fix, so it
-  wasn't attempted here. Until it's resolved, `jev-router run` picks a real agent but the
-  `--model` value it passes may not be one that agent recognizes.
+- **`jev-router run` now takes `--prompt`/`-p`.** Without it, JEV is asked to route an empty
+  string and — live-verified — reliably returns confidence around 0.27 (below the `low`
+  threshold), so `core/policy.py` falls back (`reason=low_confidence_keep_current`) instead of
+  routing. The same real prompt live-verified confidence 0.97 for the same tier. Always pass
+  `--prompt` for a real routing decision; omitting it is a deliberate no-signal passthrough,
+  not a bug.
+- **`ClaudeCodeAdapter.launch_command` now translates catalog ids to real Claude Code
+  aliases** (`_MODEL_ALIASES` in `adapters/claude_code/adapter.py`: `anthropic/claude-sonnet`
+  → `sonnet`, `anthropic/claude-opus` → `opus`), fixing the "isn't described by this version's
+  model catalog" error `claude --model anthropic/claude-sonnet` produced before. Only these two
+  ids are mapped — `openai/coding-strong` and any other catalog id still pass through
+  unchanged, since only Claude Code's own aliases have been verified. `codex`/`hermes`/
+  `opencode` still receive the router's internal catalog id as-is; only `codex`'s `--model`
+  flag is documented to accept a bare model name, and none of the three have a verified
+  translation table the way `claude_code` now does.
+- **Known gap, not fixed: `cli/run.py`'s `_candidates()` never sets `tier` or
+  `capabilities` on the `ModelSpec`s it builds** — every catalog entry gets the dataclass
+  defaults (`tier="balanced"`, identical `ModelCapabilities()`). Live-verified: a task
+  JEV confidently tiered `"strong"` still resolved to `anthropic/claude-sonnet`, never
+  `anthropic/claude-opus`, because `ModelResolver`'s tier filter can never match (no
+  candidate is ever tiered `"strong"`) and its capability tie-break has nothing to
+  differentiate candidates by, so it silently falls back to the first catalog entry
+  regardless of what JEV recommended. Also unset: `compatible_agents`, so an
+  `openai/coding-strong` candidate is technically eligible to "win" for a `claude_code`
+  launch, which would then fail (`claude --model openai/coding-strong`). Fixing this needs
+  real per-catalog-entry tier/capability/compatible-agent data, not a one-line default
+  change — deliberately not attempted here to avoid a fix that looks more correct than it is.
 - README's Roadmap section was removed (it was pre-implementation and out of date); README no
   longer tracks phase-by-phase progress. Trust `src/` and `ARCHITECTURE.md` over README prose
   if either ever disagrees with it.

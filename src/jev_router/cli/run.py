@@ -22,7 +22,8 @@ def run_run(args: dict) -> int:
                      max_retries=cfg["jev"]["max_retries"])
     router = Router(jev_client=jev, store=MemoryStore(), candidates=_candidates(cfg), privacy=cfg["privacy"])
     request = NormalizedRequest(request_id="cli_run", agent=name, session_id="cli-session",
-                                conversation_id="cli-session", turn_id="t1", prompt="",
+                                conversation_id="cli-session", turn_id="t1",
+                                prompt=args.get("prompt", ""),
                                 available_models=cfg["models"]["allow"])
     decision = router.route(request)
     print(f"routing: agent={name} model={decision.final_model} reason={decision.reason}")

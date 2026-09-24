@@ -12,6 +12,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="jev-router")
     sub = p.add_subparsers(dest="cmd")
     r = sub.add_parser("run"); r.add_argument("--agent", default="claude_code")
+    r.add_argument("--prompt", "-p", default="",
+                    help="Task description to route on. Without it, JEV has no signal about "
+                         "the task and typically returns low confidence, falling back to the "
+                         "current/default model instead of routing.")
     sub.add_parser("agents"); sub.add_parser("models"); sub.add_parser("status"); sub.add_parser("doctor")
     e = sub.add_parser("explain"); e.add_argument("--agent", default=""); e.add_argument("--session", default=""); e.add_argument("--turn", default="")
     return p

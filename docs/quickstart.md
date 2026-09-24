@@ -51,16 +51,21 @@ jev-router --help
 
 ### 1. CLI Wrapper
 
-The simplest approach. Launch your agent through `jev-router run --agent <name>`:
+The simplest approach. Launch your agent through `jev-router run --agent <name> --prompt
+"<task>"`:
 
 ```bash
-jev-router run --agent claude_code  # Claude Code with automatic routing
-jev-router run --agent codex        # OpenAI Codex with automatic routing
-jev-router run --agent hermes       # Hermes Agent with automatic routing
+jev-router run --agent claude_code --prompt "add input validation to the login form"
+jev-router run --agent codex --prompt "write a script to migrate the database schema"
+jev-router run --agent hermes --prompt "fix the failing CI job"
 ```
 
-`--agent` defaults to `claude_code`. Run `jev-router agents` to see the full list of
-registered adapter names.
+`--agent` defaults to `claude_code`. `--prompt`/`-p` is the task description JEV routes on —
+**omit it and JEV has no signal to route with**: live-verified, an empty prompt reliably
+returns confidence around 0.27 (below the policy's `low` threshold of 0.30), so the router
+falls back to the current/default model (`reason=low_confidence_keep_current`) instead of
+picking one. The same real prompt live-verified confidence 0.97 for the same tier. Run
+`jev-router agents` to see the full list of registered adapter names.
 
 `jev-router run` makes **one JEV routing decision at session start**, then launches the real
 agent binary via `subprocess.run` with that model applied (`claude --model <m>`,

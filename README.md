@@ -57,12 +57,14 @@ $env:TYPESAFE_API_KEY="your_typesafe_api_key"
 ### 3. Run
 
 ```bash
-jev-router run --agent claude_code
+jev-router run --agent claude_code --prompt "add input validation to the login form"
 ```
 
-This makes one JEV routing decision for the session, then launches `claude` with that model
-applied. `--agent` defaults to `claude_code`; run `jev-router agents` to see every registered
-adapter and whether it's detected on your machine.
+This makes one JEV routing decision for the session — using `--prompt` as the signal — then
+launches `claude` with that model applied. `--agent` defaults to `claude_code`; run
+`jev-router agents` to see every registered adapter and whether it's detected on your machine.
+Omitting `--prompt` gives JEV nothing to route on, so it typically falls back to the current/
+default model instead of picking one.
 
 For the full integration guide, see [`docs/quickstart.md`](docs/quickstart.md).
 
