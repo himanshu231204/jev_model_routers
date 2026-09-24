@@ -12,4 +12,4 @@ Precedence: **CLI args > env vars > project config > user config > defaults**.
 
 Default config: `jev.timeout_ms: 1500`, `deadline_ms: 3000`, `max_retries: 1`.
 
-Routing is disabled (passthrough) when `JEV_API_KEY` is absent.
+Routing is disabled (passthrough) when `TYPESAFE_API_KEY` is absent.

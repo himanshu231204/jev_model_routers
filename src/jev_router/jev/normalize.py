@@ -1,6 +1,6 @@
 """Normalize external JEV responses at this boundary only.
 
-Expects OpenRouter Decisions API shape: {"answers": {"tier": {"type": "choice",
+Expects TypeSafe System One API shape: {"answers": {"tier": {"type": "choice",
 "choice": "fast"|"balanced"|"strong", "probabilities": {...}, "confidence": float}}}.
 """
 from __future__ import annotations

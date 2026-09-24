@@ -32,7 +32,7 @@ def test_payload_includes_repository_when_enabled():
 
 def test_client_missing_key_returns_error():
     from jev_router.jev.client import JevClient
-    os.environ.pop("JEV_API_KEY", None)
+    os.environ.pop("TYPESAFE_API_KEY", None)
     c = JevClient(timeout_ms=100, deadline_ms=200, max_retries=0)
     dec, ms, err = c.ask({"prompt": "hi"})
     assert dec is None and err is not None

@@ -1,10 +1,10 @@
-"""JEV decision client; sole reader of JEV_API_KEY. Stdlib urllib with timeout/deadline."""
+"""JEV decision client; sole reader of TYPESAFE_API_KEY. Stdlib urllib with timeout/deadline."""
 from __future__ import annotations
 import json, os, time, urllib.request
 from jev_router.jev.normalize import normalize_jev_payload
 from jev_router.jev.schema import JEVDecision
 
-_ENDPOINT = os.environ.get("JEV_ENDPOINT", "https://openrouter.ai/api/alpha/decisions")
+_ENDPOINT = os.environ.get("JEV_ENDPOINT", "https://api.typesafe.ai/v1/systemone")
 
 class JevClient:
     def __init__(self, timeout_ms: int = 1500, deadline_ms: int = 3000, max_retries: int = 1):
@@ -13,7 +13,7 @@ class JevClient:
         self.max_retries = max_retries
 
     def _headers(self) -> dict | None:
-        key = os.environ.get("JEV_API_KEY")
+        key = os.environ.get("TYPESAFE_API_KEY")
         if not key:
             return None
         return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}

@@ -103,7 +103,7 @@ Dependency direction is one-way: **CLI → adapters → core → contracts**. Pr
 
 ## 7. Routing Invariants (must not regress)
 
-- **JEV is the only routing authority.** `JEV_API_KEY` is read exclusively by `jev/client.py`. `core/classifier.py` must not grow into an independent LLM router.
+- **JEV is the only routing authority.** `TYPESAFE_API_KEY` is read exclusively by `jev/client.py`. `core/classifier.py` must not grow into an independent LLM router.
 - **One routing decision per fresh user turn.** Pin selected model for the whole tool loop; tool results, continuations, and telemetry bypass routing.
 - **Explicit user model choice always wins** over automatic routing.
 - **Fail open, but never silently:** missing key, timeout, 5xx, malformed JEV → fall back to current/default model and record why.
@@ -150,7 +150,7 @@ Precedence: **CLI args > env vars > project config > user config > defaults**.
 
 Default config: `jev.timeout_ms: 1500`, `deadline_ms: 3000`, `max_retries: 1`.
 
-Routing is disabled (passthrough) when `JEV_API_KEY` is absent.
+Routing is disabled (passthrough) when `TYPESAFE_API_KEY` is absent.
 
 Full config schema and examples: `docs/09-configuration.md`.
 
