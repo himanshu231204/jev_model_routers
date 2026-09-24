@@ -55,3 +55,10 @@ def test_client_enforces_hard_wall_clock_deadline(monkeypatch):
     wall_clock = time.time() - start
     assert dec is None and err is not None
     assert wall_clock < 1.0  # returned promptly despite the 2s-sleeping mock
+
+def test_resolve_client_kind_defaults_stdlib():
+    from jev_router.jev.base import resolve_client_kind
+    assert resolve_client_kind({}, {}) == "stdlib"
+    assert resolve_client_kind({"jev": {"client": "sdk"}}, {}) == "sdk"
+    assert resolve_client_kind({}, {"JEV_CLIENT": "sdk"}) == "sdk"
+    assert resolve_client_kind({}, {"JEV_CLIENT": "bogus"}) == "stdlib"
