@@ -191,7 +191,7 @@ agents:
   auto_detect: true
 ```
 
-For full configuration options, see [09-configuration.md](./09-configuration.md).
+For full configuration options, see `ARCHITECTURE.md` §10 (Configuration).
 
 ---
 
@@ -201,8 +201,8 @@ For full configuration options, see [09-configuration.md](./09-configuration.md)
 |---|---|
 | JEV unavailable | Router falls back to current model automatically |
 | Agent not detected | Run `jev-router doctor` to diagnose |
-| Routing too slow | Check `jev-router status` and `JEV_ROUTER_DEBUG=1` |
-| Wrong model selected | Use explicit model choice: `jev-router claude --model claude-opus` |
+| `opencode`/`deepagents` won't launch | Expected — their `launch_command` raises `NotImplementedError`; see "CLI Wrapper" above |
+| Wrong model routed | Check `jev-router status`/`explain`; there's no manual override flag on `run` yet, only the adapters' own `--model` once launched |
 
 Run `jev-router doctor` for environment diagnostics.
 
@@ -217,4 +217,5 @@ To add support for a new coding agent:
 3. Register in `src/jev_router/adapters/registry.py`
 4. Add fixtures and tests
 
-No changes to core router, policy, or JEV auth are needed. See [07-architectural-rules.md](./07-architectural-rules.md) and `AGENTS.md`'s "Common workflows" section for the full checklist.
+No changes to core router, policy, or JEV auth are needed. See `ARCHITECTURE.md` §8
+(Architectural Rules) and `AGENTS.md`'s "Common workflows" section for the full checklist.
