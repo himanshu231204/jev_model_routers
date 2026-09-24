@@ -1,0 +1,22 @@
+router:
+  enabled: true
+  policy: default
+  fail_mode: open
+
+jev:
+  timeout_ms: 1500
+  deadline_ms: 3000
+  max_retries: 1
+
+models:
+  allow:
+    - anthropic/claude-sonnet
+    - anthropic/claude-opus
+    - openai/coding-strong
+
+agents:
+  auto_detect: true
+
+privacy:
+  send_repository_content: false
+  log_prompts: false
