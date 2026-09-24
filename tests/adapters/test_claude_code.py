@@ -17,3 +17,7 @@ def test_apply_model_rewrites():
     a = ClaudeCodeAdapter()
     out = a.apply_model(_load("simple_turn.json"), "claude-opus")
     assert "claude-opus" in str(out)
+
+def test_launch_command():
+    a = ClaudeCodeAdapter()
+    assert a.launch_command("claude-opus") == ["claude", "--model", "claude-opus"]

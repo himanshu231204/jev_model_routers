@@ -20,3 +20,8 @@ class DeepAgentsAdapter:
     def apply_model(self, raw: dict, model: str) -> dict: return {**raw, "model": model}
     def is_new_turn(self, raw: dict) -> bool: return not bool(raw.get("tool_result", False))
     def conversation_key(self, raw: dict) -> str: return str(raw.get("session_id", ""))
+    def launch_command(self, model: str) -> list[str]:
+        raise NotImplementedError(
+            "deepagents has no standalone CLI binary; it's embedded via "
+            "adapters/deepagents/adapter.py and middleware.py, not launched as a subprocess."
+        )

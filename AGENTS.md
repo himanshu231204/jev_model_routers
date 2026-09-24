@@ -13,7 +13,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   files/packages, do not restructure or rename packages to suit yourself.
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `docs/08-project-structure.md`). `python -m pytest` passes (51 tests as of this
+  (see `docs/08-project-structure.md`). `python -m pytest` passes (56 tests as of this
   writing). Add tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
@@ -34,6 +34,13 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   `{answers: {tier: {choice, confidence}}}` response. Both shapes are verified against
   TypeSafe's quickstart (`docs.typesafe.ai/introduction/quickstart`) and SDK docs
   (`docs.typesafe.ai/sdk/python`, `/sdk/javascript`).
+- **`jev-router run --agent <name>` actually launches the agent now**, via
+  `AgentAdapter.launch_command(model)` + `subprocess.run`, after one JEV routing decision at
+  session start. This is session-start routing only, not per-turn — there is still no live
+  proxy that intercepts mid-session requests (`transport/` only sends outbound; nothing
+  listens). `deepagents.launch_command` raises `NotImplementedError` since it has no CLI
+  binary. The Reverse Proxy and SDK Adapter integration strategies in
+  `docs/00-quickstart.md` remain unimplemented.
 - README's directory sketch and roadmap checkboxes lag behind the code (they were written
   pre-implementation and haven't been updated). Trust `src/` and `ARCHITECTURE.md` over
   README prose when they disagree.
