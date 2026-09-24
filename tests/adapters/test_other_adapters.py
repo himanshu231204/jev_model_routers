@@ -22,10 +22,22 @@ def test_contract_opencode_hermes_deepagents():
 
 def test_launch_command_cli_agents():
     assert get_adapter("codex").launch_command("m") == ["codex", "--model", "m"]
-    assert get_adapter("opencode").launch_command("m") == ["opencode", "--model", "m"]
-    assert get_adapter("hermes").launch_command("m") == ["hermes", "--model", "m"]
+    assert get_adapter("hermes").launch_command("m") == ["hermes", "chat", "--model", "m"]
 
 def test_launch_command_deepagents_not_implemented():
     import pytest
     with pytest.raises(NotImplementedError):
         get_adapter("deepagents").launch_command("m")
+
+def test_launch_command_opencode_not_implemented():
+    import pytest
+    with pytest.raises(NotImplementedError):
+        get_adapter("opencode").launch_command("m")
+
+def test_hermes_detect_uses_shutil_which(monkeypatch):
+    import shutil
+    from jev_router.adapters.hermes.adapter import HermesAdapter
+    monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/hermes" if name == "hermes" else None)
+    assert HermesAdapter().detect() is True
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    assert HermesAdapter().detect() is False

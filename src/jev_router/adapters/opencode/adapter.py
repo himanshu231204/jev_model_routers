@@ -20,4 +20,10 @@ class OpenCodeAdapter:
         return {**raw, **provider_entry(model), "model": model}
     def is_new_turn(self, raw: dict) -> bool: return not bool(raw.get("tool_result", False))
     def conversation_key(self, raw: dict) -> str: return str(raw.get("session_id", ""))
-    def launch_command(self, model: str) -> list[str]: return ["opencode", "--model", model]
+    def launch_command(self, model: str) -> list[str]:
+        raise NotImplementedError(
+            "opencode's interactive CLI (`opencode [directory]`) has no top-level --model "
+            "flag; --model only exists under `opencode run` for one-shot, non-interactive "
+            "messages. Preselecting a model for a normal interactive session isn't "
+            "supported via subprocess launch today."
+        )
