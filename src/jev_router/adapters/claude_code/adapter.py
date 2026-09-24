@@ -10,6 +10,7 @@ from jev_router.adapters.claude_code.compatibility import normalize_version
 # are passed through unchanged -- if they're not a real Claude Code model/alias, the launch
 # will fail with Claude Code's own error, same as before this table existed.
 _MODEL_ALIASES = {
+    "anthropic/claude-fable": "fable",
     "anthropic/claude-sonnet": "sonnet",
     "anthropic/claude-opus": "opus",
 }

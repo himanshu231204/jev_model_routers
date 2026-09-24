@@ -13,7 +13,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   files/packages, do not restructure or rename packages to suit yourself.
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (63 tests as of this writing). Add
+  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (67 tests as of this writing). Add
   tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
@@ -68,18 +68,22 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   `opencode` still receive the router's internal catalog id as-is; only `codex`'s `--model`
   flag is documented to accept a bare model name, and none of the three have a verified
   translation table the way `claude_code` now does.
-- **Known gap, not fixed: `cli/run.py`'s `_candidates()` never sets `tier` or
-  `capabilities` on the `ModelSpec`s it builds** — every catalog entry gets the dataclass
-  defaults (`tier="balanced"`, identical `ModelCapabilities()`). Live-verified: a task
-  JEV confidently tiered `"strong"` still resolved to `anthropic/claude-sonnet`, never
-  `anthropic/claude-opus`, because `ModelResolver`'s tier filter can never match (no
-  candidate is ever tiered `"strong"`) and its capability tie-break has nothing to
-  differentiate candidates by, so it silently falls back to the first catalog entry
-  regardless of what JEV recommended. Also unset: `compatible_agents`, so an
-  `openai/coding-strong` candidate is technically eligible to "win" for a `claude_code`
-  launch, which would then fail (`claude --model openai/coding-strong`). Fixing this needs
-  real per-catalog-entry tier/capability/compatible-agent data, not a one-line default
-  change — deliberately not attempted here to avoid a fix that looks more correct than it is.
+- **`cli/run.py`'s `_candidates()` now sets real `tier`/`capabilities`/`compatible_agents`**
+  via `_KNOWN_MODELS`, fixing model auto-detection. Previously every catalog entry got
+  `ModelSpec`'s bare defaults (`tier="balanced"`, identical capabilities, no
+  `compatible_agents`), so a JEV `"strong"` recommendation could never match any candidate's
+  tier and silently fell back to whichever entry the fallback tie-break happened to prefer.
+  Worse: with no `"fast"`-tier candidate in the default catalog at all, *every* `"fast"`
+  recommendation (the common case — most tasks are simple) fell back to the
+  highest-capability candidate, meaning trivial tasks were silently routed to `opus` — the
+  opposite of what "fast" means. Fixed by adding `anthropic/claude-fable` (real alias `fable`,
+  verified via `claude --help`) as a genuine fast-tier catalog entry, and assigning real
+  tier/capability/compatible-agent metadata to all four default ids. Live-verified all three
+  tiers now resolve distinctly for `claude_code`: trivial → `anthropic/claude-fable`, medium →
+  `anthropic/claude-sonnet`, complex → `anthropic/claude-opus`. `compatible_agents` also now
+  correctly excludes `openai/coding-strong` from ever winning a `claude_code` launch. Ids not
+  in `_KNOWN_MODELS` (e.g. a user's custom catalog addition) still fall back to `ModelSpec`'s
+  lenient defaults rather than being rejected.
 - README's Roadmap section was removed (it was pre-implementation and out of date); README no
   longer tracks phase-by-phase progress. Trust `src/` and `ARCHITECTURE.md` over README prose
   if either ever disagrees with it.

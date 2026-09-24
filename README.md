@@ -136,9 +136,10 @@ jev:
 
 models:
   allow:
-    - anthropic/claude-sonnet
-    - anthropic/claude-opus
-    - openai/coding-strong
+    - anthropic/claude-fable   # fast tier
+    - anthropic/claude-sonnet  # balanced tier
+    - anthropic/claude-opus    # strong tier
+    - openai/coding-strong     # strong tier (codex/opencode/hermes only)
 
 agents:
   auto_detect: true

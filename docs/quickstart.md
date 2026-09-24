@@ -195,7 +195,7 @@ For full configuration options, see `ARCHITECTURE.md` §10 (Configuration).
 | JEV unavailable | Router falls back to current model automatically |
 | Agent not detected | Run `jev-router doctor` to diagnose |
 | `opencode`/`deepagents` won't launch | Expected — their `launch_command` raises `NotImplementedError`; see "CLI Wrapper" above |
-| The launched agent rejects `--model <id>` as unknown | Known gap — `configs/default.yaml`'s default `models.allow` catalog ships placeholder-style ids (e.g. `anthropic/claude-sonnet`) that aren't real model names any agent's `--model` flag or the Anthropic/OpenAI APIs recognize. Edit `models.allow` to real model ids for your agent until a per-agent translation layer exists. |
+| `claude_code` rejects `--model <id>` as unknown | Fixed for the default catalog — `ClaudeCodeAdapter.launch_command` translates `anthropic/claude-{fable,sonnet,opus}` to the real `fable`/`sonnet`/`opus` aliases. If you add a custom id to `models.allow` it won't be in that translation table and will pass through as-is; add it to `_MODEL_ALIASES` in `adapters/claude_code/adapter.py`, or use a real Claude Code model name directly. `codex`/`hermes`/`opencode` still receive the catalog id verbatim — no translation table exists for them yet. |
 | Wrong model routed | Check `jev-router status`/`explain`; there's no manual override flag on `run` yet, only the adapters' own `--model` once launched |
 
 Run `jev-router doctor` for environment diagnostics.

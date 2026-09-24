@@ -10,6 +10,7 @@ jev:
 
 models:
   allow:
+    - anthropic/claude-fable
     - anthropic/claude-sonnet
     - anthropic/claude-opus
     - openai/coding-strong

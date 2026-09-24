@@ -69,3 +69,67 @@ def test_run_deepagents_reports_error_not_crash(capsys):
     rc = run_run({"agent": "deepagents"})
     assert rc == 1
     assert "error" in capsys.readouterr().out.lower()
+
+def test_candidates_have_real_tiers_and_compatible_agents():
+    from jev_router.cli.run import _candidates
+    from jev_router.config.loader import load
+    candidates = _candidates(load())
+    by_id = {c.id: c for c in candidates}
+    assert by_id["anthropic/claude-fable"].tier == "fast"
+    assert by_id["anthropic/claude-sonnet"].tier == "balanced"
+    assert by_id["anthropic/claude-opus"].tier == "strong"
+    assert "claude_code" in by_id["anthropic/claude-opus"].compatible_agents
+    assert "claude_code" not in by_id["openai/coding-strong"].compatible_agents
+    # opus must out-rank sonnet, which must out-rank fable, within capability-based tie-breaks
+    fable, sonnet, opus = (by_id["anthropic/claude-fable"], by_id["anthropic/claude-sonnet"],
+                           by_id["anthropic/claude-opus"])
+    assert fable.capabilities.coding < sonnet.capabilities.coding < opus.capabilities.coding
+
+def test_run_resolves_fast_tier_to_fable_not_opus(monkeypatch):
+    """Every JEV tier ("fast", "balanced", "strong") must have a real matching candidate for
+    claude_code -- a missing tier previously made the resolver's fallback always escalate to
+    the highest-capability candidate (opus) instead of respecting a "fast" recommendation."""
+    import shutil, subprocess
+    from jev_router.jev.client import JevClient
+    from jev_router.jev.schema import JEVDecision
+    from jev_router.cli.run import run_run
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
+    monkeypatch.setattr(shutil, "which", lambda name: f"/resolved/{name}")
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda cmd: calls.append(cmd) or type("R", (), {"returncode": 0})())
+    monkeypatch.setattr(JevClient, "ask",
+        lambda self, payload: (JEVDecision(requested_tier="fast", confidence=0.95), 10, None))
+    run_run({"agent": "claude_code", "prompt": "fix a typo in the README"})
+    assert calls[0] == ["/resolved/claude", "--model", "fable"]
+
+def test_run_resolves_strong_tier_to_opus_not_sonnet(monkeypatch):
+    """A JEV "strong" recommendation must actually reach the opus candidate for claude_code,
+    not silently fall back to whichever catalog entry happens to be first."""
+    import shutil, subprocess
+    from jev_router.jev.client import JevClient
+    from jev_router.jev.schema import JEVDecision
+    from jev_router.cli.run import run_run
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
+    monkeypatch.setattr(shutil, "which", lambda name: f"/resolved/{name}")
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda cmd: calls.append(cmd) or type("R", (), {"returncode": 0})())
+    monkeypatch.setattr(JevClient, "ask",
+        lambda self, payload: (JEVDecision(requested_tier="strong", confidence=0.9), 10, None))
+    run_run({"agent": "claude_code", "prompt": "design a distributed consensus algorithm"})
+    assert calls[0] == ["/resolved/claude", "--model", "opus"]
+
+def test_run_never_resolves_openai_candidate_for_claude_code(monkeypatch):
+    """Even if JEV recommends "strong" and openai/coding-strong ties on capability lookup,
+    compatible_agents must keep it out of a claude_code launch."""
+    import shutil, subprocess
+    from jev_router.jev.client import JevClient
+    from jev_router.jev.schema import JEVDecision
+    from jev_router.cli.run import run_run
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
+    monkeypatch.setattr(shutil, "which", lambda name: f"/resolved/{name}")
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda cmd: calls.append(cmd) or type("R", (), {"returncode": 0})())
+    monkeypatch.setattr(JevClient, "ask",
+        lambda self, payload: (JEVDecision(requested_tier="strong", confidence=0.9), 10, None))
+    run_run({"agent": "claude_code", "prompt": "anything"})
+    assert calls[0][2] != "openai/coding-strong"

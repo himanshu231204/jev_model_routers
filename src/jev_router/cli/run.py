@@ -3,15 +3,47 @@ from __future__ import annotations
 import shutil, subprocess
 from jev_router.adapters.registry import get_adapter
 from jev_router.config.loader import load
-from jev_router.contracts.models import ModelSpec
+from jev_router.contracts.models import ModelCapabilities, ModelSpec
 from jev_router.contracts.requests import NormalizedRequest
 from jev_router.core.router import Router
 from jev_router.jev.client import JevClient
 from jev_router.state.memory import MemoryStore
 
+# Tier/capability/compatible-agent metadata for the ids shipped in configs/default.yaml's
+# models.allow. Without this, ModelSpec's dataclass defaults (tier="balanced", identical
+# ModelCapabilities(), empty compatible_agents) make every catalog entry look the same to
+# ModelResolver: a JEV "strong" recommendation can never match any candidate's tier, and any
+# candidate is "compatible" with any agent -- including an openai/* id "winning" a claude_code
+# launch, which would then fail. Ids not listed here fall back to those same lenient defaults
+# (unknown to the router, so nothing is asserted about them) rather than being rejected.
+_KNOWN_MODELS = {
+    "anthropic/claude-fable": {
+        "tier": "fast", "compatible_agents": ["claude_code", "opencode", "hermes"],
+        "capabilities": ModelCapabilities(coding=4, reasoning=4, speed=9, cost=9),
+    },
+    "anthropic/claude-sonnet": {
+        "tier": "balanced", "compatible_agents": ["claude_code", "opencode", "hermes"],
+        "capabilities": ModelCapabilities(coding=7, reasoning=7),
+    },
+    "anthropic/claude-opus": {
+        "tier": "strong", "compatible_agents": ["claude_code", "opencode", "hermes"],
+        "capabilities": ModelCapabilities(coding=9, reasoning=9),
+    },
+    "openai/coding-strong": {
+        "tier": "strong", "compatible_agents": ["codex", "opencode", "hermes"],
+        "capabilities": ModelCapabilities(coding=8, reasoning=8),
+    },
+}
+
 
 def _candidates(cfg: dict) -> list[ModelSpec]:
-    return [ModelSpec(id=m, provider=m.split("/", 1)[0]) for m in cfg["models"]["allow"]]
+    out = []
+    for m in cfg["models"]["allow"]:
+        meta = _KNOWN_MODELS.get(m, {})
+        out.append(ModelSpec(id=m, provider=m.split("/", 1)[0], tier=meta.get("tier", "balanced"),
+                             compatible_agents=meta.get("compatible_agents", []),
+                             capabilities=meta.get("capabilities", ModelCapabilities())))
+    return out
 
 
 def run_run(args: dict) -> int:
