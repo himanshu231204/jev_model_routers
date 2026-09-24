@@ -20,11 +20,12 @@ cd jev_model_routers
 ### 2. Install
 
 ```bash
-pip install -e .
+pip install -e ".[test]"
 ```
 
-This requires Python >= 3.11. The project has **zero runtime dependencies** (stdlib only) —
-adding one is a significant decision that needs justifying (see `ARCHITECTURE.md` §8, rule 10).
+This requires Python >= 3.11 and pulls in `pytest` (a test-only extra). The project itself has
+**zero runtime dependencies** (stdlib only) — adding one is a significant decision that needs
+justifying (see `ARCHITECTURE.md` §8, rule 10).
 
 ### 3. Set a TypeSafe API Key (optional, for live routing)
 

@@ -187,14 +187,14 @@ no separate flag for it.
 ## Development
 
 ```bash
+# Install in development mode, with pytest
+pip install -e ".[test]"
+
 # Run all tests
 python -m pytest
 
 # Run tests for a specific module
 python -m pytest tests/unit/test_policy.py
-
-# Install in development mode
-pip install -e .
 ```
 
 ### Project Structure
