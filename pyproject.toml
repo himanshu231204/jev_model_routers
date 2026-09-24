@@ -11,6 +11,9 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = []
 
+[project.optional-dependencies]
+test = ["pytest"]
+
 [project.scripts]
 jev-router = "jev_router.cli.main:main"
 
