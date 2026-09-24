@@ -1,0 +1,202 @@
+# Quick Start — Integration Guide
+
+> How to integrate JEV Model Router into your coding agent.
+
+---
+
+## What This Covers
+
+This guide shows how to route your coding agent's model requests through JEV Model Router automatically. Three integration strategies are supported:
+
+1. **CLI Wrapper** — wrap an existing agent command
+2. **Reverse Proxy** — point agent's provider endpoint at JEV
+3. **SDK Adapter** — embed the router into Python/TypeScript code
+
+---
+
+## Prerequisites
+
+- **Python ≥ 3.11**
+- **JEV API key** (sign up at [JEV](https://jev.ai))
+
+```bash
+# Linux / macOS
+export JEV_API_KEY="your_jev_api_key"
+
+# Windows PowerShell
+$env:JEV_API_KEY="your_jev_api_key"
+```
+
+---
+
+## Install
+
+```bash
+pip install -e .
+# or
+pip install jev-router
+```
+
+Verify:
+
+```bash
+jev-router --help
+```
+
+---
+
+## Integration Strategies
+
+### 1. CLI Wrapper
+
+The simplest approach. Launch your agent through `jev-router`:
+
+```bash
+jev-router claude    # Claude Code with automatic routing
+jev-router codex     # OpenAI Codex with automatic routing
+jev-router opencode  # OpenCode with automatic routing
+```
+
+Or explicitly specify the agent:
+
+```bash
+jev-router run --agent claude
+jev-router run --agent codex
+```
+
+The router auto-detects the agent, starts a local proxy, and routes each model request through JEV.
+
+Additional commands:
+
+```bash
+jev-router agents     # List detected agents
+jev-router models     # Show available models
+jev-router status     # Show current routing state
+jev-router explain    # Explain the last routing decision
+jev-router doctor     # Diagnose configuration and adapter compatibility
+```
+
+### 2. Reverse Proxy
+
+Set your agent's `base_url` to the JEV local proxy:
+
+```
+Coding Agent → localhost:PORT (JEV Proxy) → upstream provider
+```
+
+The router intercepts model requests, rewrites the model identifier, and forwards to the original provider. Works with any agent that supports configurable `base_url`/provider endpoint.
+
+Start the proxy:
+
+```bash
+jev-router --proxy
+```
+
+Then configure your agent to use `http://localhost:PORT` as its provider endpoint.
+
+### 3. SDK Adapter
+
+For agents embedded as Python/TypeScript libraries (DeepAgents, custom agents):
+
+```python
+from jev_router import JEVRouter
+
+router = JEVRouter()
+
+# Use JEVRoutedModel to intercept model selection
+agent = create_agent(
+    model=JEVRoutedModel(candidates=["claude-sonnet", "claude-opus"])
+)
+```
+
+The adapter intercepts the model invocation boundary:
+- One logical user turn → one JEV decision
+- All tool iterations reuse the pinned model
+- Sub-agents route independently or inherit the parent model
+
+---
+
+## How It Works
+
+```
+Agent Request
+       │
+       ▼
+Adapter (agent-specific)
+       │
+       ▼
+Normalized Request
+       │
+       ▼
+JEV API  (what model should I use?)
+       │
+       ▼
+Policy Engine  (confidence, overrides, cost/latency)
+       │
+       ▼
+Model Resolver  (picks concrete model)
+       │
+       ▼
+Turn State  (pin model for the whole tool loop)
+       │
+       ▼
+Provider / Model  (execution)
+```
+
+**Key invariants:**
+
+- **One decision per fresh turn** — pinned through the entire tool loop
+- **Explicit user choice always wins** — manual override beats automatic routing
+- **Fail open** — if JEV is unavailable, falls back to current/default model
+- **No secrets in logs** — API keys and prompts are never logged
+
+---
+
+## Configuration
+
+Config precedence: **CLI args → env vars → project config → user config → defaults**.
+
+Example `config.yaml`:
+
+```yaml
+router:
+  enabled: true
+  policy: default
+  fail_mode: open
+
+jev:
+  timeout_ms: 1500
+  deadline_ms: 3000
+  max_retries: 1
+
+agents:
+  auto_detect: true
+```
+
+For full configuration options, see **§53-§54** in [15-configuration-cli.md](./15-configuration-cli.md).
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| JEV unavailable | Router falls back to current model automatically |
+| Agent not detected | Run `jev-router doctor` to diagnose |
+| Routing too slow | Check `jev-router status` and `JEV_ROUTER_DEBUG=1` |
+| Wrong model selected | Use explicit model choice: `jev-router claude --model claude-opus` |
+
+For detailed diagnostics, see **§64** (Compatibility Detection) and **§63** (Doctor Command) in [15-configuration-cli.md](./15-configuration-cli.md).
+
+---
+
+## Adding a New Agent
+
+To add support for a new coding agent:
+
+1. Create `src/jev_router/adapters/<name>/adapter.py`
+2. Implement normalization, turn detection, and model application
+3. Register in `src/jev_router/adapters/registry.py`
+4. Add fixtures and tests
+
+No changes to core router, policy, or JEV auth are needed. See **§39** (Generic Adapter SDK) and **§40** (Plugin Architecture) in [05-agent-adapters.md](./05-agent-adapters.md).
