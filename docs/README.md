@@ -5,7 +5,7 @@ Two documents cover this project:
 - **[`ARCHITECTURE.md`](../ARCHITECTURE.md)** — the single source of truth for design: goals,
   non-goals, system architecture, components, routing invariants, architectural rules, project
   structure, configuration, testing rules, implementation phases, and reference material.
-- **[`00-quickstart.md`](./00-quickstart.md)** — integration guide: install, set
+- **[`quickstart.md`](./quickstart.md)** — integration guide: install, set
   `TYPESAFE_API_KEY`, and use the CLI to route a real coding-agent session.
 
 For current implementation status (what's actually built, not just designed), see the root

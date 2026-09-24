@@ -4,7 +4,7 @@
 > **Project:** `jev_model_router`
 > **Primary goal:** Build an agent-agnostic model router that can sit in front of coding agents (Claude Code, OpenAI Codex, OpenCode, DeepAgents, Hermes Agent, and future/custom agents).
 > **Source:** This file is the single source of truth for design. `docs/` holds only an index
-> (`docs/README.md`) and the integration quickstart (`docs/00-quickstart.md`) — see §13 below.
+> (`docs/README.md`) and the integration quickstart (`docs/quickstart.md`) — see §13 below.
 
 ---
 
@@ -177,14 +177,14 @@ still a gap (e.g. per-turn routing via a live proxy is not yet built).
 
 ```
 docs/
-├── README.md        # Points to this file and to 00-quickstart.md
-└── 00-quickstart.md # Integration guide: install, set TYPESAFE_API_KEY, CLI usage
+├── README.md        # Points to this file and to quickstart.md
+└── quickstart.md # Integration guide: install, set TYPESAFE_API_KEY, CLI usage
 ```
 
 This file (`ARCHITECTURE.md`) is the single source of truth for design — read it directly
 rather than a mirrored split. `docs/` previously contained a one-file-per-section split (14
 files) plus five empty placeholder directories; both were removed as unnecessary duplication
-that had to be kept in sync by hand. `docs/00-quickstart.md` may be hand-edited directly to
+that had to be kept in sync by hand. `docs/quickstart.md` may be hand-edited directly to
 stay accurate to `src/`; propose design changes against this file.
 
 ---

@@ -18,7 +18,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
 - **`ARCHITECTURE.md` (~204 lines, 15 sections) is the design source of truth — read it
-  directly.** `docs/` holds only `docs/README.md` (points here) and `docs/00-quickstart.md`
+  directly.** `docs/` holds only `docs/README.md` (points here) and `docs/quickstart.md`
   (integration guide, hand-maintained, may be edited directly to stay accurate to `src/`). The
   old one-file-per-section split (`docs/01`–`docs/14`) and five empty placeholder directories
   were removed as unnecessary duplication. All of `docs/` is tracked and committed — it is not
@@ -44,7 +44,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   command — opencode's interactive CLI has no top-level `--model` flag, and deepagents has no
   CLI binary at all. `HermesAdapter.detect()` now uses `shutil.which("hermes")` like every
   other adapter (it was hardcoded to always return `False`). The Reverse Proxy and SDK Adapter
-  integration strategies in `docs/00-quickstart.md` remain unimplemented.
+  integration strategies in `docs/quickstart.md` remain unimplemented.
 - README's Roadmap section was removed (it was pre-implementation and out of date); README no
   longer tracks phase-by-phase progress. Trust `src/` and `ARCHITECTURE.md` over README prose
   if either ever disagrees with it.
