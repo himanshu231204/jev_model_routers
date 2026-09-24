@@ -3,7 +3,7 @@
 > **Status:** Target architecture / implementation blueprint
 > **Project:** `jev_model_router`
 > **Primary goal:** Build an agent-agnostic model router that can sit in front of coding agents (Claude Code, OpenAI Codex, OpenCode, DeepAgents, Hermes Agent, and future/custom agents).
-> **Source:** This file is the single source of truth. Detailed sections are split into `docs/` (19 indexed files). See §93 below.
+> **Source:** This file is the single source of truth. It is also split, section-for-section, into `docs/` (14 indexed files). See §13 below.
 
 ---
 
@@ -89,15 +89,15 @@ Dependency direction is one-way: **CLI → adapters → core → contracts**. Pr
 | Component | Responsibility |
 |---|---|
 | CLI/Launcher | Start router, detect agents, select adapter, load config |
-| Agent Adapter Layer | Normalize requests, apply model, detect turns (107-§106) |
-| Routing Core | Route: validate → check overrides → ask JEV → policy → resolve → pin (§14) |
-| Policy Engine | Explicit override, safety constraints, confidence thresholds, cost/latency/cache (§20-§22, §46-§49) |
-| Model Resolver | Pick concrete model from available ∩ agent-compatible ∩ provider-compatible ∩ policy-allowed (§17-§19) |
-| State Manager | Turn pinning, sub-agent isolation, session store, lifecycle (§23-§25, §41-§45) |
-| Transport/Proxy | Forward requests, streaming, local proxy (§26-§27, §71-§72) |
-| Observability | Structured events, privacy-safe logging, explain API, metrics (§50-§52, §74-§76) |
-| Security/Privacy | Auth, redaction, local proxy binding, request mutation rules (§28-§32, §68-§70) |
-| Config/Loader | CLI args > env vars > project config > user config > defaults (§53-§54) |
+| Agent Adapter Layer | Normalize requests, apply model, detect turns |
+| Routing Core | Route: validate → check overrides → ask JEV → policy → resolve → pin |
+| Policy Engine | Explicit override, safety constraints, confidence thresholds, cost/latency/cache |
+| Model Resolver | Pick concrete model from available ∩ agent-compatible ∩ provider-compatible ∩ policy-allowed |
+| State Manager | Turn pinning, sub-agent isolation, session store, lifecycle |
+| Transport/Proxy | Forward requests, streaming, local proxy |
+| Observability | Structured events, privacy-safe logging, explain API, metrics |
+| Security/Privacy | Auth, redaction, local proxy binding, request mutation rules |
+| Config/Loader | CLI args > env vars > project config > user config > defaults |
 
 ---
 
@@ -113,7 +113,7 @@ Dependency direction is one-way: **CLI → adapters → core → contracts**. Pr
 
 ---
 
-## 8. Architectural Rules (§100)
+## 8. Architectural Rules
 
 1. **Core never imports an agent adapter** — `core → contracts`, not `core → claude`
 2. **Adapter never owns routing policy** — adapters parse and rewrite, they don't decide which model is "better"
@@ -136,11 +136,11 @@ src/jev_router/
 ├── jev/  · transport/  · state/  · config/  · observability/  · security/
 ```
 
-Full layout with all files: **§55** in `docs/16-project-structure.md`.
+Full layout with all files: `docs/08-project-structure.md`.
 
-Dependency direction (§56): `CLI → Adapters → Core → Contracts`.
+Dependency direction: `CLI → Adapters → Core → Contracts`.
 
-Interface contracts (§57): `Router.route()`, `Policy.evaluate()`, `ModelResolver.resolve()`, `AgentAdapter.*`.
+Interface contracts: `Router.route()`, `Policy.evaluate()`, `ModelResolver.resolve()`, `AgentAdapter.*`.
 
 ---
 
@@ -152,7 +152,7 @@ Default config: `jev.timeout_ms: 1500`, `deadline_ms: 3000`, `max_retries: 1`.
 
 Routing is disabled (passthrough) when `JEV_API_KEY` is absent.
 
-Full config schema and examples: **§53-§54** in `docs/15-configuration-cli.md`.
+Full config schema and examples: `docs/09-configuration.md`.
 
 ---
 
@@ -163,7 +163,7 @@ Full config schema and examples: **§53-§54** in `docs/15-configuration-cli.md`
 - Adapter tests are fixture-driven (`tests/fixtures/`).
 - Every non-trivial change to policy, resolution, overrides, fresh-turn detection, state isolation, or fallback needs a test.
 
-Full testing architecture: **§65-§67** in `docs/17-testing.md`.
+Full testing architecture: `docs/10-testing-rules.md`.
 
 ---
 
@@ -171,44 +171,40 @@ Full testing architecture: **§65-§67** in `docs/17-testing.md`.
 
 Phase 0 — Contracts · Phase 1 — JEV Core · Phase 2 — Model Registry · Phase 3 — State · Phase 4 — Claude Code Adapter · Phase 5 — Codex · Phase 6 — OpenCode · Phase 7 — Hermes · Phase 8 — DeepAgents · Phase 9 — Observability.
 
-Full roadmap and acceptance criteria: **§95-§99** in `docs/18-roadmap.md`.
+Full roadmap and acceptance criteria: `docs/11-implementation-phases.md`.
 
 ---
 
-## 13. Documentation Structure (§93)
+## 13. Documentation Structure
 
-The `docs/` directory contains a verbatim split of this architecture document into 19 indexed files:
+The `docs/` directory contains a verbatim, one-file-per-section split of this architecture
+document, plus a standalone quickstart guide:
 
 ```
 docs/
-├── 00-quickstart.md         # Integration guide, all three strategies
-├── README.md                    # Index and section-to-file map (106 sections)
-├── 01-overview.md               # §1   Executive Summary
-├── 02-design-goals.md           # §2-§3  Design goals, non-goals
-├── 03-core-principles.md        # §4, §100, §106  Core principles and rules
-├── 04-system-architecture.md    # §5, §101, §102  System diagram and core abstraction
-├── 05-agent-adapters.md         # §7-§9, §33-§40  Adapter layer, types, plugins
-├── 06-request-models.md         # §10-§13  Normalized request, repo context, tools, routing context
-├── 07-router-core.md            # §14-§16, §87-§89  Router core, JEV decision, internal flows
-├── 08-models-registry.md        # §17-§19, §83-§86  Registry, resolution, capability matrix
-├── 09-policy-engine.md          # §20-§22, §46-§49, §60  Policy, overrides, confidence, caching
-├── 10-turn-state.md             # §23-§25, §41-§45, §81-§82  Turn pinning, sub-agents, concurrency
-├── 11-transport-proxy.md        # §26-§27, §71-§72, §80  Transport, proxy, streaming, WebSocket
-├── 12-security-privacy.md       # §28-§29, §68-§70  Auth, privacy, proxy security, mutation rules
-├── 13-failure-handling.md       # §30-§32, §77-§78  Failure hierarchy, fallback, error taxonomy
-├── 14-observability.md          # §50-§52, §74-§76  Observability, logging, explain, metrics
-├── 15-configuration-cli.md      # §6, §53-§54, §61-§64, §73, §79  CLI, config, doctor, compat
-├── 16-project-structure.md      # §55-§57, §90-§94  Project layout, dependencies, contracts, README
-├── 17-testing.md                # §65-§67  Testing architecture, contract tests, fixtures
-├── 18-roadmap.md                # §58-§59, §95-§99  Routing examples, V1-V3, phases, acceptance
-└── 19-references.md             # §105  Reference material
+├── README.md                        # Index and section-to-file map
+├── 00-quickstart.md                 # Integration guide, all three strategies (not a §-split)
+├── 01-executive-summary.md          # §1  Executive Summary
+├── 02-design-goals-and-non-goals.md # §2-§3  Design goals, non-goals
+├── 03-core-principle.md             # §4  Core architectural principle
+├── 04-system-architecture.md        # §5  High-level system architecture
+├── 05-major-components.md           # §6  Major components
+├── 06-routing-invariants.md         # §7  Routing invariants (must not regress)
+├── 07-architectural-rules.md        # §8  Architectural rules
+├── 08-project-structure.md          # §9  Project structure
+├── 09-configuration.md              # §10  Configuration
+├── 10-testing-rules.md              # §11  Testing rules
+├── 11-implementation-phases.md      # §12  Implementation phases
+├── 12-documentation-structure.md    # §13  This section
+├── 13-success-criterion.md          # §14  Success criterion
+└── 14-reference-material.md         # §15  Reference material
 ```
 
 > **Note:** This file (`ARCHITECTURE.md`) remains the single source of truth. `docs/*` are verbatim splits — do not edit them; propose changes against the source section here.
 
 ---
 
-## 14. Success Criterion (§104)
+## 14. Success Criterion
 
 The strongest test: **Can a new coding agent be added without modifying `core/router.py`, `core/policy.py`, or `core/resolver.py`?**
 
@@ -216,7 +212,7 @@ The target answer is: **YES.** Adding a new agent should require only a new `ada
 
 ---
 
-## 15. Reference Material (§105)
+## 15. Reference Material
 
 - OpenCode: provider configuration and custom `baseURL` support — https://opencode.ai/docs/providers
 - Hermes Agent: provider/model selection, custom providers, runtime provider resolution — https://github.com/NousResearch/hermes-agent

@@ -5,12 +5,16 @@ Flow: coding agent → adapter → normalized request → router → policy → 
 
 ## Current state of this repo (read this first)
 
-- **Every `.py` file under `src/jev_router/` is a docstring-only stub** (<120 bytes: one module
-  docstring, no code). The docstring is the specification for that module's responsibility —
-  implement inside the existing file, do not restructure or rename packages to suit yourself.
-- **`tests/` does not exist yet**, even though `pyproject.toml` sets `testpaths = ["tests"]`.
-  Create tests under `tests/unit/`, `tests/integration/`, `tests/contract/`, `tests/adapters/`,
-  `tests/routing/`, `tests/fixtures/` (see `docs/16-project-structure.md`).
+- **All phases are implemented.** Every package under `src/jev_router/` (`cli/`, `core/`,
+  `contracts/`, `adapters/`, `providers/`, `jev/`, `transport/`, `state/`, `config/`,
+  `observability/`, `security/`) has real code, not stubs — e.g. `core/router.py`,
+  `core/policy.py`, `core/resolver.py`, `jev/client.py`, and full adapters for
+  `claude_code`, `codex`, `opencode`, `hermes`, `deepagents`. Implement inside the existing
+  files/packages, do not restructure or rename packages to suit yourself.
+- **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
+  `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
+  (see `docs/08-project-structure.md`). `python -m pytest` passes (49 tests as of this
+  writing). Add tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
 - **`ARCHITECTURE.md` (~2,900 lines) is the design source of truth.** `docs/01…19` are verbatim
@@ -18,8 +22,9 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   never edit `docs/*`; change `ARCHITECTURE.md` instead.
 - `docs/*`, `skills-lock.json`, `.superpowers/`, `.tmp/`, `.agents/` are local/untracked work —
   leave them alone.
-- README's directory sketch is aspirational and does not match the code. Trust `src/` and
-  `ARCHITECTURE.md` over README prose.
+- README's directory sketch and roadmap checkboxes lag behind the code (they were written
+  pre-implementation and haven't been updated). Trust `src/` and `ARCHITECTURE.md` over
+  README prose when they disagree.
 
 ## Commands
 
@@ -27,7 +32,8 @@ Flow: coding agent → adapter → normalized request → router → policy → 
 - **Zero runtime dependencies (`dependencies = []`) — stdlib only.** Adding a dependency is a
   significant decision; justify it (ARCHITECTURE.md §29: dependency rules).
 - Install: `pip install -e .` (exposes the `jev-router` console script →
-  `jev_router.cli.main:main`, currently a stub).
+  `jev_router.cli.main:main`, which dispatches to `run`/`agents`/`models`/`status`/
+  `explain`/`doctor` subcommands).
 - All tests: `python -m pytest`
 - One file / one test: `python -m pytest tests/unit/test_policy.py` or
   `python -m pytest tests/unit/test_policy.py::test_name`
