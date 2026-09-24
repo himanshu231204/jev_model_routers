@@ -13,7 +13,8 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   files/packages, do not restructure or rename packages to suit yourself.
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (67 tests as of this writing). Add
+  (see `ARCHITECTURE.md` §9). `tests/live/` covers `jev_router_live` (§16) the same way.
+  `python -m pytest` passes (103 tests as of this writing). Add
   tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
@@ -35,9 +36,13 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   (`docs.typesafe.ai/sdk/python`, `/sdk/javascript`).
 - **`jev-router run --agent <name>` actually launches the agent now**, via
   `AgentAdapter.launch_command(model)` + `subprocess.run`, after one JEV routing decision at
-  session start. This is session-start routing only, not per-turn — there is still no live
-  proxy that intercepts mid-session requests (`transport/` only sends outbound; nothing
-  listens). `launch_command` was verified against each real installed CLI's `--help`, not
+  session start. This is session-start routing only, not per-turn — `jev_router`'s own
+  `transport/` only sends outbound; nothing listens for mid-session requests. Per-turn routing
+  via a live local proxy exists as a separate package, `src/jev_router_live/` (`jev-claude` /
+  `jev-codex` / `jev-explain`; see `ARCHITECTURE.md` §16 and `src/jev_router_live/README.md`) —
+  it does not share code with `jev_router` and is not part of the adapter/core/contracts
+  pipeline described above. `launch_command` was verified against each real installed CLI's
+  `--help`, not
   guessed: `claude --model <m>` and `hermes chat --model <m>` are correct; `codex --model <m>`
   is unverified (binary not available to test against). `opencode.launch_command` and
   `deepagents.launch_command` both raise `NotImplementedError` rather than emit a broken

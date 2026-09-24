@@ -68,6 +68,25 @@ default model instead of picking one.
 
 For the full integration guide, see [`docs/quickstart.md`](docs/quickstart.md).
 
+### Per-turn routing (live proxy)
+
+The `jev-router run` command above makes one routing decision at session start. For routing
+**every fresh turn** of a Claude Code or Codex session — not just the first one — use the live
+proxy tools instead:
+
+```bash
+echo "JEV_API_KEY=..." > ~/.jev-router.env
+
+jev-claude               # launches Claude Code, routing each new user turn
+jev-codex                 # launches OpenAI Codex, routing each new user turn
+jev-explain <session-id>  # shows why the last turn was routed the way it was
+```
+
+These wrap the real `claude`/`codex` CLIs with a local HTTP proxy in front of their API, so a
+session's `/model` picker, tools, permissions, and streaming are untouched — only the model
+picked for each fresh turn changes. See [`src/jev_router_live/README.md`](src/jev_router_live/README.md)
+and [`ARCHITECTURE.md`](ARCHITECTURE.md) §16 for how it works.
+
 ---
 
 ## How It Works
@@ -181,10 +200,15 @@ jev-router models              # Show the configured model catalog
 jev-router status              # Show current routing state (enabled/passthrough)
 jev-router explain             # Explain the last routing decision
 jev-router doctor              # Diagnose environment/config (Python version, key presence)
+
+jev-claude                     # Launch Claude Code with per-turn (live proxy) routing
+jev-codex                      # Launch OpenAI Codex with per-turn (live proxy) routing
+jev-explain <session-id>       # Explain the live proxy's last routing decision
 ```
 
-Passthrough (no routing) happens automatically whenever `TYPESAFE_API_KEY` is unset — there's
-no separate flag for it.
+Passthrough (no routing) happens automatically whenever `TYPESAFE_API_KEY` (for `jev-router
+run`) or `JEV_API_KEY`/`TYPESAFE_API_KEY` (for `jev-claude`/`jev-codex`) is unset — there's no
+separate flag for it.
 
 ---
 
@@ -216,6 +240,17 @@ src/jev_router/
 ├── config/       # Runtime configuration
 ├── security/     # Secrets/redaction
 └── observability/# Logs, metrics, explanations
+
+src/jev_router_live/   # Per-turn live proxy routing (independent of jev_router above)
+├── config.py     # Tiers, thresholds, override phrases, Jev questions
+├── policy.py     # Pure routing decision function
+├── router.py     # Jev/System One HTTP call
+├── proxy.py      # Claude Code per-turn proxy
+├── codex_proxy.py# Codex per-turn proxy
+├── status.py     # Per-session decision file
+├── explain.py    # Explanation report renderer
+├── settings.py   # Saved-default-model restore
+└── bin/          # jev-claude / jev-codex / jev-statusline / jev-explain entry points
 ```
 
 ---

@@ -172,8 +172,9 @@ Routing is disabled (passthrough) when `TYPESAFE_API_KEY` is absent.
 
 Phase 0 — Contracts · Phase 1 — JEV Core · Phase 2 — Model Registry · Phase 3 — State · Phase 4 — Claude Code Adapter · Phase 5 — Codex · Phase 6 — OpenCode · Phase 7 — Hermes · Phase 8 — DeepAgents · Phase 9 — Observability.
 
-All phases are implemented; see `AGENTS.md`'s "Current state of this repo" for what's real vs.
-still a gap (e.g. per-turn routing via a live proxy is not yet built).
+All phases are implemented; see `AGENTS.md`'s "Current state of this repo" for what's real.
+Per-turn routing via a live local proxy is implemented as a separate package, `jev_router_live`
+— see §16.
 
 ---
 
@@ -207,4 +208,96 @@ The target answer is: **YES.** Adding a new agent should require only a new `ada
 
 - OpenCode: provider configuration and custom `baseURL` support — https://opencode.ai/docs/providers
 - Hermes Agent: provider/model selection, custom providers, runtime provider resolution — https://github.com/NousResearch/hermes-agent
-- `gargpratyush/jev-router`: per-turn routing, model pinning, fail-open, CLI proxying — https://github.com/gargpratyush/jev-router
+
+---
+
+## 16. Live Per-Turn Routing (`jev_router_live`)
+
+`jev_router` routes once, at session start (§1–§15). `jev_router_live` is a second, independent
+package under `src/jev_router_live/` that routes **every fresh user turn**, by running a local
+HTTP proxy in front of the coding agent's own API instead of launching the agent with a
+pre-resolved model. The two packages share nothing at runtime — no imports either direction —
+because they solve different problems: `jev_router` targets any adapter-compatible agent;
+`jev_router_live` targets exactly the two CLIs (Claude Code, OpenAI Codex) whose HTTP wire
+protocol it knows how to rewrite in place.
+
+### 16.1 Why a proxy instead of a pre-resolved model
+
+Session-start routing (§1) can only look at the first prompt. A session that starts with a
+trivial question and later asks for a hard refactor is stuck on whichever model matched turn
+one. Per-turn routing fixes this by staying in the request path for the whole session: a local
+HTTP server sits between the agent CLI and the model provider's API, and every request that
+opens a fresh user turn gets a new routing decision before it leaves the machine.
+
+```mermaid
+flowchart LR
+    A[Coding Agent CLI] -->|ANTHROPIC_BASE_URL / model_provider base_url| B[Local Proxy]
+    B -->|fresh turn: ask Jev, apply tier| C[Provider API]
+    B -->|tool-call continuation: reuse pinned tier| C
+    C --> B --> A
+```
+
+### 16.2 Sentinel model, not a config flag
+
+The agent CLI is told (via environment variables, `bin/jev_claude.py` / `bin/jev_codex.py`)
+that a model named `jev-router` (`AUTO_MODEL` / `CODEX_AUTO_MODEL`) exists and is selected by
+default. Because neither CLI validates model names against a custom base URL, the sentinel
+travels untouched in the request body. Its presence in a request is therefore an exact,
+unambiguous signal: "route this turn." Any other model name means the user picked one
+themselves with the CLI's own `/model` picker, and the proxy passes that request straight
+through unmodified — automatic routing never overrides an explicit human choice (Rule 5, §8).
+
+### 16.3 Fresh-turn detection
+
+A turn can span many HTTP requests while the agent works through tool calls; only the first of
+those requests reflects a real decision point. `proxy.py`'s `new_turn_prompt` (Claude Code) and
+`codex_proxy.py`'s `codex_new_turn_prompt` (Codex) both apply the same test: a request counts as
+a fresh turn only if its last message has `role: user`, is not a tool-result/tool-output
+continuation, and carries at least one tool definition (ruling out the CLI's own auxiliary
+calls, e.g. title generation). Injected `<system-reminder>` / `<environment_context>` /
+`<current_datetime>` blocks are stripped before the prompt reaches Jev, since they are noise to
+the router and measurably blunt its confidence.
+
+### 16.4 Conversation-scoped pinning
+
+Each conversation gets a stable key (`conversation_key` / `codex_conversation_key`) derived from
+the session id plus the text of the first message — never from mutable fields the CLI rewrites
+between requests (cache-control breakpoints, metadata). The tier chosen for a fresh turn is
+pinned against that key and reused by every follow-up request in the same turn, including
+sub-agent calls running through the same endpoint, which get their own key and can never leak a
+model choice into the parent conversation. This mirrors §7's "state is scoped `agent + session +
+turn`" invariant, at proxy granularity instead of adapter granularity.
+
+### 16.5 Policy layer (shared, pure)
+
+`policy.py`'s `decide()` is a pure function reused by both proxies: given a Jev answer, the tier
+currently pinned, and the tiers actually available to the account, it returns the tier to run
+and why. It layers, in order: an explicit override phrase in the prompt ("use haiku", "switch to
+strong") beats everything; a missing/malformed Jev response falls back to the current tier
+(fail open, §7); low-confidence answers refuse to downgrade and cap how far they can upgrade;
+and a downgrade is skipped outright once the conversation is large enough that rebuilding the
+prompt cache would cost more than the downgrade saves. Every branch is reviewable in one place
+and unit-tested independently of any HTTP or proxy code (`tests/live/test_live_policy.py`).
+
+### 16.6 Request rewriting
+
+Once a tier is chosen, `apply_tier` / `apply_codex_tier` rewrite the outgoing request body in
+place: point `model` at that tier's concrete id, and strip request fields the target tier cannot
+accept (e.g. `thinking`/`effort` when downgrading to a tier that doesn't support them) so the
+rewritten request is never rejected by the provider for a shape mismatch the agent CLI didn't
+know to avoid.
+
+### 16.7 Observability
+
+Every routed decision — prompt, chosen model, confidence, Jev's raw request/response, and the
+policy reason — is written to a per-session file (`status.py`, mode 0600, OS temp dir, pruned
+after 7 days idle). Two consumers read it: the Claude Code status line (`bin/jev_statusline.py`)
+renders a one-line summary on every prompt render, and `jev-explain` / the bundled
+`$jev-explain` skill (`explain.py`) renders the full report on demand. Nothing routing-relevant
+is ever logged anywhere else; `log.py` is strictly for debug tracing gated by `JEV_DEBUG`.
+
+### 16.8 Fail-open
+
+Exactly as in §7: a Jev timeout, malformed response, or missing API key never blocks a prompt.
+`router.py`'s `ask_jev` returns `None` on any failure (bounded by a real wall-clock deadline, not
+just a per-socket timeout), and `decide()` reads `None` as "keep the current tier."
