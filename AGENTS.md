@@ -13,7 +13,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   files/packages, do not restructure or rename packages to suit yourself.
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `docs/08-project-structure.md`). `python -m pytest` passes (56 tests as of this
+  (see `docs/08-project-structure.md`). `python -m pytest` passes (58 tests as of this
   writing). Add tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
@@ -46,9 +46,9 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   CLI binary at all. `HermesAdapter.detect()` now uses `shutil.which("hermes")` like every
   other adapter (it was hardcoded to always return `False`). The Reverse Proxy and SDK Adapter
   integration strategies in `docs/00-quickstart.md` remain unimplemented.
-- README's directory sketch and roadmap checkboxes lag behind the code (they were written
-  pre-implementation and haven't been updated). Trust `src/` and `ARCHITECTURE.md` over
-  README prose when they disagree.
+- README's Roadmap section was removed (it was pre-implementation and out of date); README no
+  longer tracks phase-by-phase progress. Trust `src/` and `ARCHITECTURE.md` over README prose
+  if either ever disagrees with it.
 
 ## Commands
 
