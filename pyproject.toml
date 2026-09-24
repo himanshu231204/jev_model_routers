@@ -16,6 +16,9 @@ test = ["pytest"]
 
 [project.scripts]
 jev-router = "jev_router.cli.main:main"
+jev-claude = "jev_router_live.bin.jev_claude:main"
+jev-codex = "jev_router_live.bin.jev_codex:main"
+jev-explain = "jev_router_live.bin.jev_explain:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
