@@ -17,22 +17,23 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   writing). Add tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
-- **`ARCHITECTURE.md` (~223 lines, 15 sections) is the design source of truth.** `docs/01…14`
-  are verbatim splits of its sections and say "do not edit here; propose changes against the
-  source section" — never edit `docs/01`–`docs/14`; change `ARCHITECTURE.md` instead.
-  `docs/00-quickstart.md` is a standalone integration guide, not a section split, and may be
-  hand-edited directly to stay accurate to `src/`.
-- `docs/README.md` and `docs/01`–`docs/14` are tracked, committed files, not local scratch —
-  treat them like any other versioned doc. `.superpowers/`, `.tmp/`, `.agents/` are local/
-  untracked work; leave those alone.
-- **`jev/client.py` targets TypeSafe's real System One API**
-  (`POST https://api.typesafe.ai/v1/systemone`), not a placeholder host. `TYPESAFE_API_KEY`
-  holds a TypeSafe API key — same env var name TypeSafe's own SDK reads by default, even
-  though this router calls the raw HTTP API directly via stdlib `urllib` (zero runtime deps)
-  rather than depending on TypeSafe's SDK. `jev/questions.py` builds the
-  `{model, state, questions}` request; `jev/normalize.py` parses the
-  `{answers: {tier: {choice, confidence}}}` response — both match the SDK's own request/
-  response shape, verified against `docs.typesafe.ai/sdk/python` and `/sdk/javascript`.
+- **`ARCHITECTURE.md` (~223 lines, 15 sections) is the design source of truth.** `docs/01`–
+  `docs/14` are a verbatim, section-for-section split of it — "do not edit here; propose
+  changes against the source section" — so never hand-edit `docs/01`–`docs/14`; change
+  `ARCHITECTURE.md` and regenerate the split instead. `docs/00-quickstart.md` is a standalone
+  integration guide, not a section split, and may be hand-edited directly to stay accurate to
+  `src/`. `docs/README.md` indexes the split. All of `docs/` is tracked and committed — it is
+  not local scratch. Only `.superpowers/`, `.tmp/`, and `.agents/` are local/untracked work;
+  leave those alone.
+- **The JEV client is wired to TypeSafe's real System One API**, not a placeholder. `jev/
+  client.py` calls `POST https://api.typesafe.ai/v1/systemone` with `TYPESAFE_API_KEY` as the
+  bearer token — the same env var name TypeSafe's own SDK reads by default, even though this
+  router calls the raw HTTP API directly via stdlib `urllib` (zero runtime deps) rather than
+  depending on the SDK. `jev/questions.py` builds the `{model, state, questions}` request
+  (a single `"tier"` choice question); `jev/normalize.py` parses the
+  `{answers: {tier: {choice, confidence}}}` response. Both shapes are verified against
+  TypeSafe's quickstart (`docs.typesafe.ai/introduction/quickstart`) and SDK docs
+  (`docs.typesafe.ai/sdk/python`, `/sdk/javascript`).
 - README's directory sketch and roadmap checkboxes lag behind the code (they were written
   pre-implementation and haven't been updated). Trust `src/` and `ARCHITECTURE.md` over
   README prose when they disagree.
@@ -68,9 +69,9 @@ Dependency direction is one-way: **CLI → adapters → core → contracts**.
 
 ## Routing invariants (must not regress)
 
-- **JEV is the only routing authority.** `TYPESAFE_API_KEY` is read exclusively by `jev/client.py`;
-  no other module may build JEV auth headers. Never hard-code, commit, or print the key.
-  `core/classifier.py` must not grow into an independent LLM router.
+- **JEV is the only routing authority.** `TYPESAFE_API_KEY` is read exclusively by
+  `jev/client.py`; no other module may build JEV auth headers. Never hard-code, commit, or
+  print the key. `core/classifier.py` must not grow into an independent LLM router.
 - **One routing decision per fresh user turn.** Pin the selected model for the whole tool loop;
   tool results, continuations, telemetry, and title/summary calls bypass routing.
 - **Explicit user model choice always wins** over automatic routing.
@@ -90,8 +91,8 @@ Dependency direction is one-way: **CLI → adapters → core → contracts**.
   user config > defaults**.
 - `configs/default.yaml`: `jev.timeout_ms: 1500`, `deadline_ms: 3000`, `max_retries: 1`.
   Routing is on the interactive hot path — keep calls short; retry only within the deadline.
-- Routing is disabled (passthrough) when `TYPESAFE_API_KEY` is absent — the CLI must report this
-  clearly instead of crashing a running session.
+- Routing is disabled (passthrough) when `TYPESAFE_API_KEY` is absent — the CLI must report
+  this clearly instead of crashing a running session.
 
 ## Testing rules
 
