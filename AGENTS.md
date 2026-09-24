@@ -25,10 +25,10 @@ Flow: coding agent → adapter → normalized request → router → policy → 
 - `docs/README.md` and `docs/01`–`docs/14` are tracked, committed files, not local scratch —
   treat them like any other versioned doc. `.superpowers/`, `.tmp/`, `.agents/` are local/
   untracked work; leave those alone.
-- **`jev/client.py` targets TypeSafe's real Jev model via OpenRouter's Decisions API**
-  (`POST https://openrouter.ai/api/alpha/decisions`), not a placeholder host. `JEV_API_KEY`
-  holds an OpenRouter API key. `jev/questions.py` builds the `{model, state, questions}`
-  request; `jev/normalize.py` parses the `{answers: {tier: {choice, confidence}}}` response.
+- **`jev/client.py` targets TypeSafe's real System One API**
+  (`POST https://api.typesafe.ai/v1/systemone`), not a placeholder host. `JEV_API_KEY` holds a
+  TypeSafe API key. `jev/questions.py` builds the `{model, state, questions}` request;
+  `jev/normalize.py` parses the `{answers: {tier: {choice, confidence}}}` response.
 - README's directory sketch and roadmap checkboxes lag behind the code (they were written
   pre-implementation and haven't been updated). Trust `src/` and `ARCHITECTURE.md` over
   README prose when they disagree.

@@ -1,12 +1,12 @@
 """Minimal JEV routing payload builder honoring privacy flags.
 
-Payload shape matches OpenRouter's Decisions API (POST /api/alpha/decisions):
+Payload shape matches TypeSafe's System One API (POST https://api.typesafe.ai/v1/systemone):
 {"model": ..., "state": {...turn context...}, "questions": {...typed questions...}}.
 """
 from __future__ import annotations
 from jev_router.contracts.requests import NormalizedRequest
 
-_MODEL = "typesafe/jev-1.13"
+_MODEL = "jev-latest"
 
 _TIER_QUESTION = {
     "type": "choice",
