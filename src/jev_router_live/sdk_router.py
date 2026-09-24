@@ -17,13 +17,14 @@ def sdk_ask_jev(*, prompt, current, context_tokens, models):
         retry = typesafe_sdk.RetryPolicy(max_retries=THRESHOLDS.jev_max_retries, timeout=THRESHOLDS.jev_timeout_ms / 1000.0)
         base = os.environ.get("JEV_ENDPOINT") or os.environ.get("TYPESAFE_BASE_URL") or "https://api.typesafe.ai"
         with typesafe_sdk.TypeSafeClient(api_key=key, base_url=base, model="jev-latest", retry=retry) as client:
-            result = client.system_one({"request": prompt, "session": {"current_model": current, "context_tokens": context_tokens},
-                                        "environment": {"available_models": [m["id"] for m in models]}}, questions)
+            state = {"request": prompt, "session": {"current_model": current, "context_tokens": context_tokens},
+                     "environment": {"available_models": [m["id"] for m in models]}}
+            result = client.system_one(state, questions)
         ans = result.choices["model"]
         return {"choice": ans.choice, "confidence": float(getattr(ans, "confidence", 0.0)),
                 "probabilities": dict(getattr(ans, "probabilities", {}) or {}),
                 "metrics": {"taskComplexity": 0.5, "reasoningRequired": 0.5, "toolComplexity": 0.5,
                             "contextSize": min(context_tokens / CONTEXT_WINDOW_TOKENS, 1)},
-                "request": {}, "response": {}, "ms": int((time.time() - start) * 1000)}
+                "request": {"state": state, "questions": questions}, "response": {}, "ms": int((time.time() - start) * 1000)}
     except Exception:
         return None

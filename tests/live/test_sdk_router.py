@@ -26,3 +26,5 @@ def test_live_sdk_router_returns_same_shape(monkeypatch):
     out = sdk_ask_jev(prompt="fix bug", current="haiku", context_tokens=100,
                       models=[{"id": "claude-sonnet-5", "tier": "sonnet"}])
     assert out["choice"] == "claude-sonnet-5" and out["ms"] >= 0
+    assert out["request"]["state"]["request"] == "fix bug"
+    assert out["request"]["questions"]["model"]
