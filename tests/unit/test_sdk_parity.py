@@ -31,3 +31,13 @@ def test_sdk_client_maps_choice_to_decision(monkeypatch):
     dec, ms, err = SdkJevClient(timeout_ms=500, deadline_ms=2000, max_retries=0).ask(
         {"model": "jev-latest", "state": {"prompt": "hi"}, "questions": {"tier": {"type": "choice", "instructions": "pick", "criteria": {"fast": None, "balanced": None, "strong": None}}}})
     assert err is None and dec.requested_tier == "strong" and dec.confidence == 0.97
+
+
+def test_normalize_accepts_sdk_result_object():
+    from jev_router.jev.normalize import normalize_jev_payload
+    class A:
+        choice = "balanced"; confidence = 0.82
+    class R:
+        choices = {"tier": A()}
+    d = normalize_jev_payload(R(), 12)
+    assert d.requested_tier == "balanced" and d.confidence == 0.82
