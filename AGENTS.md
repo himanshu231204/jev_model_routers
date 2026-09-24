@@ -13,7 +13,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   files/packages, do not restructure or rename packages to suit yourself.
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (58 tests as of this writing). Add
+  (see `ARCHITECTURE.md` §9). `python -m pytest` passes (59 tests as of this writing). Add
   tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
@@ -45,6 +45,25 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   CLI binary at all. `HermesAdapter.detect()` now uses `shutil.which("hermes")` like every
   other adapter (it was hardcoded to always return `False`). The Reverse Proxy and SDK Adapter
   integration strategies in `docs/quickstart.md` remain unimplemented.
+- **`cli/run.py` resolves `launch_command`'s argv[0] via `shutil.which()` before calling
+  `subprocess.run`.** A bare `"claude"` fails Windows's `CreateProcess` even when it's on PATH
+  and `shutil.which` finds it — the real executable there is a `.CMD` shim (e.g. `claude.CMD`)
+  and the extensionless name doesn't resolve the same way `cmd.exe` resolves it. Passing the
+  resolved full path fixes it on both Windows and POSIX. Verified live: `jev-router run --agent
+  claude_code` now actually launches `claude` (previously: `FileNotFoundError` dumped as a raw
+  traceback). Missing-binary and launch-failure cases print a clean one-line error and return 1
+  instead of crashing.
+- **Known gap: the default model catalog (`configs/default.yaml` `models.allow`) ships
+  placeholder-style ids** (`anthropic/claude-sonnet`, `anthropic/claude-opus`,
+  `openai/coding-strong`) that aren't valid values for any real consumer — not Claude Code's
+  `--model` flag (verified live: `claude` rejects `anthropic/claude-sonnet` as an unknown
+  model), and not the Anthropic/OpenAI API's `model` field either (`providers/anthropic.py`/
+  `openai.py` pass the id straight through as the literal API `model` value). There is no
+  per-agent model-name translation layer — `apply_model`/`launch_command` forward the router's
+  internal `ModelSpec.id` verbatim. Fixing this needs either real per-agent model ids in the
+  catalog or a translation layer per adapter; it's a design decision, not a one-line fix, so it
+  wasn't attempted here. Until it's resolved, `jev-router run` picks a real agent but the
+  `--model` value it passes may not be one that agent recognizes.
 - README's Roadmap section was removed (it was pre-implementation and out of date); README no
   longer tracks phase-by-phase progress. Trust `src/` and `ARCHITECTURE.md` over README prose
   if either ever disagrees with it.

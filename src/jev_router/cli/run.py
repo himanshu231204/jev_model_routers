@@ -1,6 +1,6 @@
 """CLI command that launches a coding agent with a JEV-routed model for the session."""
 from __future__ import annotations
-import subprocess
+import shutil, subprocess
 from jev_router.adapters.registry import get_adapter
 from jev_router.config.loader import load
 from jev_router.contracts.models import ModelSpec
@@ -31,4 +31,14 @@ def run_run(args: dict) -> int:
     except NotImplementedError as e:
         print(f"error: {e}")
         return 1
-    return subprocess.run(cmd).returncode
+    # shutil.which resolves the full path (e.g. claude.CMD on Windows) so subprocess.run's
+    # CreateProcess can find it; a bare "claude" fails there even when it's on PATH.
+    resolved = shutil.which(cmd[0])
+    if resolved is None:
+        print(f"error: '{cmd[0]}' not found on PATH — is it installed?")
+        return 1
+    try:
+        return subprocess.run([resolved, *cmd[1:]]).returncode
+    except OSError as e:
+        print(f"error: failed to launch '{cmd[0]}': {e}")
+        return 1
