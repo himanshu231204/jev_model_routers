@@ -68,6 +68,8 @@ This makes one JEV routing decision for the session, then launches `claude` with
 applied. `--agent` defaults to `claude_code`; run `jev-router agents` to see every registered
 adapter and whether it's detected on your machine.
 
+For the full integration guide, see [`docs/quickstart.md`](docs/quickstart.md).
+
 ---
 
 ## How It Works
