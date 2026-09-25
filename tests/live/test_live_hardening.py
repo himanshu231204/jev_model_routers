@@ -621,3 +621,15 @@ def test_launcher_respects_users_own_model_choice(launched, monkeypatch):
     monkeypatch.setenv("TYPESAFE_API_KEY", "k")
     monkeypatch.setenv("ANTHROPIC_MODEL", "claude-opus-5-5")
     assert launched()["env"]["ANTHROPIC_MODEL"] == "claude-opus-5-5"
+
+
+# --- packaging ------------------------------------------------------------------------------
+
+
+def test_codex_explain_skill_ships_in_the_package_and_installs(tmp_path):
+    from jev_router_live.bin.jev_codex import install_codex_skill
+
+    target = install_codex_skill(home=tmp_path)
+    assert target == tmp_path / ".agents" / "skills" / "jev-router-explain" / "SKILL.md"
+    text = target.read_text(encoding="utf-8")
+    assert "name: jev-explain" in text and "<jev-explain>" in text  # codex_proxy keys on the marker

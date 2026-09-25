@@ -10,8 +10,11 @@ policy → request rewritten to that model → Anthropic → streamed back uncha
   its adapters/core/contracts, `configs/`, the `jev-router` command and their tests) was removed;
   it lives only in git history. Don't reintroduce a second router, Jev client or proxy.
 - **`ARCHITECTURE.md` is the design source of truth — read it directly.** `docs/quickstart.md`
-  is the user guide; `src/jev_router_live/README.md` is the package guide. `docs/superpowers/`
-  holds dated historical design notes, some about the removed package — not current guidance.
+  is the user guide; `src/jev_router_live/README.md` is the package guide. Keep development
+  scratch (plans, specs, notes) out of the repository.
+- **Non-Python files the package needs at runtime live inside `src/jev_router_live/`** and are
+  listed in `pyproject.toml` `[tool.setuptools.package-data]` (today: the Codex
+  `skills/codex/jev-explain/SKILL.md`). Anything at the repo root is not installed.
 - **Tests:** `tests/live/` (unit + proxy-integration, Jev mocked) and
   `tests/live/test_live_jev_api.py` (real Jev, opt-in). `python -m pytest` passes (92 tests,
   3 skipped live-API tests, as of this writing). CI (`.github/workflows/ci.yml`) runs pytest on

@@ -14,8 +14,15 @@ project is at `0.1.0` (see `pyproject.toml`) and everything below is unreleased.
   use, instead of `JEV_API_KEY`. `JEV_API_KEY` is no longer read; if it is set without
   `TYPESAFE_API_KEY`, `jev-claude` / `jev-codex` print a one-line notice to rename it.
 
+### Fixed
+
+- `jev-codex` failed to install its `$jev-explain` Codex skill (printing a warning on every
+  launch) from any non-editable install: the skill lived at the repository root, outside the
+  package. It now ships inside `jev_router_live` as package data.
+
 ### Removed
 
+- `docs/superpowers/` (development plans and specs; not user or contributor documentation).
 - The session-start router package `src/jev_router/` (adapters for Claude Code, Codex,
   OpenCode, Hermes and DeepAgents; core router/policy/resolver; contracts; providers;
   transport; state), the `jev-router` command, `configs/` and their tests. The project is now
