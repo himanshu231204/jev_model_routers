@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 import tempfile
 import time
 from pathlib import Path
@@ -27,24 +28,43 @@ def _file_for(session_id: str) -> Path:
     return STATUS_DIR / f"{_SAFE_ID.sub('', session_id)}.json"
 
 
-def _ensure_dir() -> None:
-    STATUS_DIR.mkdir(parents=True, exist_ok=True, mode=DIR_MODE)
+def private_dir() -> Path | None:
+    """``STATUS_DIR``, created if needed, but only if it is a real directory owned by this
+    user and closed to everyone else; otherwise None.
+
+    On Linux the temp dir is the shared /tmp, so another local user could pre-create
+    ``/tmp/jev-claude``. Writing prompts (or the Claude Code settings file) into a directory
+    they own would let them read or replace it, so such a directory is never used."""
     try:
-        os.chmod(STATUS_DIR, DIR_MODE)
+        STATUS_DIR.mkdir(parents=True, exist_ok=True, mode=DIR_MODE)
+        st = os.lstat(STATUS_DIR)
+        if not stat.S_ISDIR(st.st_mode):
+            return None
+        if hasattr(os, "getuid"):  # POSIX; Windows temp dirs are already per-user
+            if st.st_uid != os.getuid():
+                return None
+            if stat.S_IMODE(st.st_mode) != DIR_MODE:
+                os.chmod(STATUS_DIR, DIR_MODE)
     except OSError:
-        pass  # Another user owns the directory; the write below will fail too.
+        return None
+    return STATUS_DIR
+
+
+def write_private(path: Path, text: str) -> None:
+    """Write ``text`` to ``path`` with owner-only permissions from the moment it exists."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), FILE_MODE)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.chmod(path, FILE_MODE)  # tighten files written by earlier versions too
 
 
 def write_status(session_id: str | None, status: dict) -> None:
     """Publish the latest routing decision so the status line can display it."""
     global _pruned
-    if not session_id:
+    if not session_id or private_dir() is None:
         return
     try:
-        _ensure_dir()
-        file = _file_for(session_id)
-        file.write_text(json.dumps(status), encoding="utf-8")
-        os.chmod(file, FILE_MODE)
+        write_private(_file_for(session_id), json.dumps(status))
         if not _pruned:
             _pruned = True
             prune_stale()
@@ -61,7 +81,7 @@ def write_decision(session_id: str | None, decision: dict) -> None:
 
 def read_status(session_id: str | None) -> dict | None:
     """Latest routing decision for a session, or None if none has been made yet."""
-    if not session_id:
+    if not session_id or private_dir() is None:
         return None
     try:
         return json.loads(_file_for(session_id).read_text(encoding="utf-8"))

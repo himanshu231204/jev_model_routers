@@ -19,9 +19,14 @@ def log(line: str) -> None:
     if not _interactive:
         sys.stderr.write(text)
         return
+    record(line)
+
+
+def record(line: str) -> None:
+    """Append to the log file only, never stderr. Callers pass safe metadata, never prompts."""
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as fh:
-            fh.write(f"{datetime.now(timezone.utc).isoformat()} {text}")
+            fh.write(f"{datetime.now(timezone.utc).isoformat()} [jev] {line}\n")
     except OSError:
         pass  # A broken log file must never take down the session.
 

@@ -13,7 +13,6 @@ import http.client
 import json
 import os
 import re
-import socket
 import ssl
 import sys
 import threading
@@ -34,7 +33,7 @@ from jev_router_live.config import (
     tier_of,
     tier_spec,
 )
-from jev_router_live.log import debug, log
+from jev_router_live.log import debug, log, record
 from jev_router_live.policy import decide
 from jev_router_live.router import ask_jev
 from jev_router_live.status import write_decision, write_status
@@ -123,13 +122,17 @@ def apply_tier(body: dict, tier_name: str, model: str | None = None) -> dict:
 
 
 def claude_models(catalog: list[dict] | None = None) -> list[dict]:
-    """Exact Claude models reported by the account, newest first; static ids are the
-    cold-start fallback."""
+    """The model JEV may pick for each tier, cheapest tier first: the account's newest model
+    in that tier (``/v1/models`` lists newest first), or the verified static id when the
+    catalog is empty. Older versions of a tier (e.g. Opus 4.x next to Opus 5.x) are left
+    out: they add noise and tokens to every JEV call without being a better choice."""
     models = []
+    seen_tiers: set[str] = set()
     for model in catalog or []:
         tier = tier_of(model.get("id"))
-        if not tier:
+        if not tier or tier in seen_tiers:
             continue
+        seen_tiers.add(tier)
         parts = [
             model.get("display_name"),
             model.get("created_at") and f"released {model['created_at'][:10]}",
@@ -137,7 +140,7 @@ def claude_models(catalog: list[dict] | None = None) -> list[dict]:
         ]
         models.append({"id": model["id"], "tier": tier, "description": "; ".join(p for p in parts if p)})
     if models:
-        return models
+        return sorted(models, key=lambda m: rank_of(m["tier"]))
     return [{"id": t.id, "tier": t.name, "description": t.id} for t in TIERS]
 
 
@@ -178,22 +181,35 @@ def conversation_key(body: dict) -> str:
         text = "".join(b.get("text", "") for b in content if b.get("type") == "text")
     else:
         text = ""
+    # Claude Code injects a varying set of <system-reminder> blocks into the first message
+    # (2.1.282 sends a turn's first request with fewer of them than the retry that follows),
+    # so only the user's own text identifies the conversation.
+    text = _SYSTEM_REMINDER_RE.sub("", text).strip()
     return sha1(f"{session}|{text}".encode()).hexdigest()[:12]
 
 
+def _turn_length(body: dict) -> int:
+    """Number of user/assistant messages: grows with every turn, equal on a resent request."""
+    return sum(1 for m in body.get("messages") or [] if m.get("role") != "system")
+
+
 class _ConvoState:
-    __slots__ = ("tier", "model")
+    __slots__ = ("tier", "model", "routed_turn")
 
     def __init__(self) -> None:
         self.tier: str | None = None
         self.model: str | None = None
+        # (prompt, turn length) of the last routed turn, to recognise a resent request.
+        self.routed_turn: tuple[str, int] | None = None
 
 
 class _Convos:
-    """Bounded LRU-ish map of conversation key -> routing state."""
+    """Bounded LRU-ish map of conversation key -> routing state, plus the model most recently
+    routed in each session (used for auxiliary calls that belong to no routed conversation)."""
 
     def __init__(self, limit: int = 50) -> None:
         self._data: dict[str, _ConvoState] = {}
+        self._session_models: dict[str, str] = {}
         self._limit = limit
         self._lock = threading.Lock()
 
@@ -206,6 +222,19 @@ class _Convos:
                 state = self._data[key] = _ConvoState()
             return state
 
+    def remember_session_model(self, session: str, model: str) -> None:
+        if not session:
+            return
+        with self._lock:
+            self._session_models.pop(session, None)
+            self._session_models[session] = model
+            if len(self._session_models) > self._limit:
+                self._session_models.pop(next(iter(self._session_models)))
+
+    def session_model(self, session: str) -> str | None:
+        with self._lock:
+            return self._session_models.get(session) if session else None
+
 
 def _forward_headers(headers: dict, target_host: str) -> dict:
     out = {k: v for k, v in headers.items() if k.lower() != "content-length"}
@@ -217,6 +246,7 @@ def _make_handler(
     upstream_url: str, route: Callable[..., dict | None], convos: _Convos, catalog: dict[str, dict]
 ) -> type[BaseHTTPRequestHandler]:
     target = urlparse(upstream_url)
+    catalog_loader = _CatalogLoader(target, catalog)
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
@@ -259,8 +289,14 @@ def _make_handler(
                 prompt = new_turn_prompt(body)
                 explaining = bool(prompt and "<jev-explain>" in prompt)
                 fresh: dict | None = None
+                turn = (prompt, _turn_length(body)) if prompt else None
+                # The same prompt at the same conversation length is the same turn sent again
+                # (Claude Code resends a turn's first request; retries after API errors):
+                # keep the model already chosen for it instead of asking JEV twice.
+                resent = state.tier is not None and turn == state.routed_turn
 
-                if prompt and not explaining:
+                if prompt and not explaining and not resent:
+                    catalog_loader.ensure(self.headers)
                     models = [m for m in claude_models(list(catalog.values())) if m["tier"] in available_tiers()]
                     available = sorted({m["tier"] for m in models}, key=rank_of)
                     current_model = state.model or _model_for_tier(models, current)
@@ -285,7 +321,8 @@ def _make_handler(
                         model = current_model
                     else:
                         model = _model_for_tier(models, tier)
-                    state.tier, state.model = tier, model
+                    state.tier, state.model, state.routed_turn = tier, model, turn
+                    convos.remember_session_model(session_of(body), model)
                     fresh = {
                         "prompt": prompt,
                         "model": model,
@@ -294,14 +331,19 @@ def _make_handler(
                         "reason": reason,
                         "jev": {"request": jev.get("request"), "response": jev.get("response")} if jev else None,
                     }
-                    jev_desc = f"{jev.get('ms')}ms p={jev.get('confidence')}" if jev else "no-jev"
-                    debug(
-                        f"{key} {jev_desc} {current} -> {tier} ({reason}) "
-                        f"ctx~{context_tokens} | {prompt[:60]}"
-                    )
+                    record(_decision_line(key, tier, model, jev, reason, context_tokens))
+                    debug(f"{key} prompt: {prompt[:60]}")
 
-                tier = state.tier or current
-                model = state.model or id_of(tier)
+                # A request with no routed turn of its own (an auxiliary call Claude Code makes
+                # on the sentinel, e.g. a status summary) runs on the model its session was last
+                # routed to -- what the user would be on had they picked it -- else on the
+                # fallback tier's catalog model. Never a guessed id, never the sentinel.
+                model = (
+                    state.model
+                    or convos.session_model(session_of(body))
+                    or _model_for_tier(claude_models(list(catalog.values())), current)
+                )
+                tier = state.tier or tier_of(model) or current
                 debug(f"{key} rewrite {body.get('model')} -> {model}")
                 apply_tier(body, tier, model)
                 if fresh and not explaining:
@@ -319,25 +361,17 @@ def _make_handler(
         def _proxy(self, body: bytes) -> None:
             out = self._rewrite(body) if self.command == "POST" else body
             headers = _forward_headers(dict(self.headers), target.netloc)
-            is_models = self.command == "GET" and re.match(r"^/v1/models(?:\?|$)", self.path)
-            if is_models:
-                headers.pop("Accept-Encoding", None)
-                headers.pop("accept-encoding", None)
-            if os.environ.get("JEV_DEBUG"):
-                headers.pop("Accept-Encoding", None)
-                headers.pop("accept-encoding", None)
+            is_models = bool(self.command == "GET" and re.match(r"^/v1/models(?:\?|$)", self.path))
+            if is_models or os.environ.get("JEV_DEBUG"):
+                _drop_header(headers, "accept-encoding")
 
             try:
-                if target.scheme == "https":
-                    conn = http.client.HTTPSConnection(target.hostname, target.port or 443, context=ssl.create_default_context())
-                else:
-                    conn = http.client.HTTPConnection(target.hostname, target.port or 80)
-                path = f"{target.path.rstrip('/')}{self.path}"
-                conn.request(self.command, path, body=out if out else None, headers=headers)
+                conn = _connect(target)
+                conn.request(self.command, f"{target.path.rstrip('/')}{self.path}", body=out or None, headers=headers)
                 upstream = conn.getresponse()
-            except (OSError, socket.error, http.client.HTTPException) as exc:
-                debug(f"upstream error: {exc}")
-                payload = json.dumps({"type": "error", "error": {"message": str(exc)}}).encode()
+            except (OSError, http.client.HTTPException) as exc:
+                log(f"upstream request failed: {exc!r}")
+                payload = json.dumps({"type": "error", "error": {"type": "api_error", "message": f"jev proxy: upstream unreachable ({exc})"}}).encode()
                 self.send_response(502)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(payload)))
@@ -346,59 +380,170 @@ def _make_handler(
                 return
 
             try:
-                # Framing and hop-by-hop headers describe the upstream connection, not ours:
-                # http.client has already de-chunked the body, and send_response writes its own
-                # Server/Date. Forwarding upstream's `Transfer-Encoding: chunked` next to our
-                # Content-Length is invalid HTTP -- Node rejects it and resets the socket, which
-                # is what surfaced as WinError 10054 in the terminal.
-                self.send_response(upstream.status)
-                for k, v in upstream.getheaders():
-                    if k.lower() not in _HOP_HEADERS:
-                        self.send_header(k, v)
+                self._relay(upstream, is_models)
+            finally:
+                conn.close()
 
-                if upstream.chunked and not is_models:
-                    # Streaming (SSE): relay each piece as it arrives, re-chunked for our client.
-                    self.send_header("Transfer-Encoding", "chunked")
-                    self.end_headers()
-                    while chunk := upstream.read1(65536):
-                        self.wfile.write(b"%x\r\n%s\r\n" % (len(chunk), chunk))
-                        self.wfile.flush()
-                    self.wfile.write(b"0\r\n\r\n")
-                    return
+        def _relay(self, upstream: http.client.HTTPResponse, is_models: bool) -> None:
+            # Framing and hop-by-hop headers describe the upstream connection, not ours:
+            # http.client has already de-chunked the body, and send_response writes its own
+            # Server/Date. Forwarding upstream's `Transfer-Encoding: chunked` next to our
+            # Content-Length is invalid HTTP -- Node rejects it and resets the socket, which
+            # is what surfaced as WinError 10054 in the terminal.
+            self.send_response(upstream.status)
+            for k, v in upstream.getheaders():
+                if k.lower() not in _HOP_HEADERS:
+                    self.send_header(k, v)
 
-                data = upstream.read()
-                if is_models:
-                    _record_catalog(catalog, data)
+            if is_models:
+                data = _read_upstream(upstream.read)
+                if data is None:
+                    self.close_connection = True
+                    data = b""
+                _record_catalog(catalog, data)
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
-            finally:
-                conn.close()
+                return
+
+            # Everything else is relayed as it arrives, so SSE token streams reach Claude Code
+            # immediately rather than after the whole response. Framing is re-derived for our
+            # side of the connection: chunked when upstream is, else upstream's exact length,
+            # else close-delimited.
+            if upstream.chunked:
+                self.send_header("Transfer-Encoding", "chunked")
+            elif upstream.length is not None:
+                self.send_header("Content-Length", str(upstream.length))
+            else:
+                self.send_header("Connection", "close")
+                self.close_connection = True
+            self.end_headers()
+
+            while True:
+                chunk = _read_upstream(lambda: upstream.read1(65536))
+                if chunk is None:
+                    # Upstream broke mid-response. Our headers are already out, so the only
+                    # honest signal left for the client is to close without a clean end.
+                    self.close_connection = True
+                    return
+                if not chunk:
+                    break
+                # Client-side write failures propagate to _ProxyServer.handle_error, which
+                # treats them as the client disconnecting.
+                self.wfile.write(b"%x\r\n%s\r\n" % (len(chunk), chunk) if upstream.chunked else chunk)
+                self.wfile.flush()
+            if upstream.chunked:
+                self.wfile.write(b"0\r\n\r\n")
 
     return Handler
 
 
+def _decision_line(key: str, tier: str, model: str, jev: dict | None, reason: str, context_tokens: int) -> str:
+    """One routing decision as safe metadata only: no prompt, no credentials."""
+    confidence = jev.get("confidence") if jev else None
+    conf = f"{confidence:.2f}" if isinstance(confidence, (int, float)) else "n/a"
+    latency = f"{jev.get('ms')}ms" if jev and jev.get("ms") is not None else "n/a"
+    return (
+        f"turn={key} decision={tier} model={model} confidence={conf} "
+        f"latency={latency} reason={reason} ctx~{context_tokens}"
+    )
+
+
+def _read_upstream(read: Callable[[], bytes]) -> bytes | None:
+    """One read from the upstream response, or None if the upstream connection failed.
+
+    Upstream failures are logged visibly: they are real problems (network, API), unlike the
+    client dropping its own socket, which surfaces as a write error instead."""
+    try:
+        return read()
+    except (OSError, http.client.HTTPException) as exc:
+        log(f"upstream connection failed mid-response: {exc!r}")
+        return None
+
+
+def _connect(target, timeout: float | None = None) -> http.client.HTTPConnection:
+    kwargs = {} if timeout is None else {"timeout": timeout}
+    if target.scheme == "https":
+        return http.client.HTTPSConnection(target.hostname, target.port or 443, context=ssl.create_default_context(), **kwargs)
+    return http.client.HTTPConnection(target.hostname, target.port or 80, **kwargs)
+
+
+def _drop_header(headers: dict, name: str) -> None:
+    for key in [k for k in headers if k.lower() == name]:
+        del headers[key]
+
+
 _HOP_HEADERS = {"content-length", "transfer-encoding", "connection", "keep-alive", "server", "date"}
 
+# Headers of Claude Code's own request that are reused to read the model catalog: its
+# credential (API key or claude.ai OAuth token) plus the API version/beta flags it negotiates.
+_CATALOG_HEADERS = {"authorization", "x-api-key", "anthropic-version", "anthropic-beta", "user-agent"}
+_CATALOG_TIMEOUT_S = 2.0
 
-def _record_catalog(catalog: dict[str, dict], data: bytes) -> None:
+
+def _record_catalog(catalog: dict[str, dict], data: bytes) -> int:
+    """Adds the tier-recognised models in a /v1/models response to ``catalog``; returns how
+    many were added."""
     try:
-        for model in json.loads(data.decode("utf-8")).get("data", []):
-            if tier_of(model.get("id")):
-                catalog[model["id"]] = model
-    except ValueError as exc:
-        debug(f"could not read Claude model catalog: {exc}")
-        return
-    debug(f"model catalog: {sorted(catalog)}")
+        models = json.loads(data.decode("utf-8")).get("data", [])
+    except (ValueError, AttributeError) as exc:
+        log(f"model catalog: unreadable /v1/models response ({exc!r})")
+        return 0
+    added = 0
+    for model in models if isinstance(models, list) else []:
+        if isinstance(model, dict) and isinstance(model.get("id"), str) and tier_of(model["id"]):
+            catalog[model["id"]] = model
+            added += 1
+    record(f"model catalog: {sorted(catalog) or 'empty, using verified static ids'}")
+    return added
+
+
+class _CatalogLoader:
+    """Reads the account's model catalog once, using Claude Code's own credentials.
+
+    Claude Code's gateway model discovery skips itself when the user is signed in with a
+    claude.ai subscription (it only runs with an API key, ANTHROPIC_AUTH_TOKEN or
+    apiKeyHelper), so for most users it never calls /v1/models through this proxy. The proxy
+    therefore asks itself, on the first routed turn, with the headers that request carried.
+    One bounded attempt per process: if it fails, routing uses the verified static ids."""
+
+    def __init__(self, target, catalog: dict[str, dict]) -> None:
+        self._target = target
+        self._catalog = catalog
+        self._lock = threading.Lock()
+        self._attempted = False
+
+    def ensure(self, request_headers) -> None:
+        with self._lock:
+            if self._attempted or self._catalog:
+                return
+            self._attempted = True
+            headers = {k: v for k, v in dict(request_headers).items() if k.lower() in _CATALOG_HEADERS}
+            headers["Host"] = self._target.netloc
+            try:
+                conn = _connect(self._target, _CATALOG_TIMEOUT_S)
+                conn.request("GET", f"{self._target.path.rstrip('/')}/v1/models?limit=1000", headers=headers)
+                resp = conn.getresponse()
+                data = resp.read()
+                conn.close()
+            except (OSError, http.client.HTTPException) as exc:
+                log(f"model catalog: fetch failed ({exc!r}); using verified static ids")
+                return
+            if resp.status != 200:
+                log(f"model catalog: /v1/models returned HTTP {resp.status}; using verified static ids")
+                return
+            _record_catalog(self._catalog, data)
 
 
 class _ProxyServer(ThreadingHTTPServer):
     """Keeps the proxy's own errors out of the terminal Claude Code is drawing on.
 
     A client dropping its connection (Claude Code closing an idle keep-alive socket, or
-    exiting mid-stream) is normal and not an error. Anything else is a real bug: it is logged
-    with its traceback via ``log`` (a file in interactive mode) instead of the stdlib's
-    default of printing to stderr over the TUI."""
+    exiting mid-stream; WinError 10054/10053 on Windows) is normal and not an error. Only
+    client-side resets reach here: upstream failures are caught and logged visibly where they
+    happen (``_read_upstream``, ``_proxy``). Anything else is a real bug: it is logged with its
+    traceback via ``log`` (a file in interactive mode) instead of the stdlib's default of
+    printing to stderr over the TUI."""
 
     def handle_error(self, request: Any, client_address: Any) -> None:
         exc = sys.exc_info()[1]

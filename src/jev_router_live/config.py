@@ -184,8 +184,8 @@ def question_for_models(models: list[dict]) -> dict:
         "type": "choice",
         "instructions": (
             "Pick the cheapest exact model that can fully complete this coding request in one "
-            "pass, without retrying on a stronger model. Treat different model versions as "
-            "separate choices. Judge required reasoning, not requested reply length."
+            "pass, without retrying on a stronger model. Choices are listed cheapest first. "
+            "Judge required reasoning, not requested reply length."
         ),
         "criteria": criteria,
     }
