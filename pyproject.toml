@@ -5,11 +5,31 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "jev-router"
 version = "0.1.0"
-description = "Per-turn JEV model routing for Claude Code and OpenAI Codex."
+description = "Per-turn model routing for Claude Code, decided by TypeSafe's Jev."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
+authors = [{ name = "Himanshu Kumar" }]
+keywords = ["claude", "claude-code", "codex", "model-routing", "llm", "jev", "typesafe", "proxy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/himanshu231204/jev_model_routers"
+Documentation = "https://github.com/himanshu231204/jev_model_routers/blob/main/docs/quickstart.md"
+Issues = "https://github.com/himanshu231204/jev_model_routers/issues"
+Changelog = "https://github.com/himanshu231204/jev_model_routers/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 test = ["pytest"]

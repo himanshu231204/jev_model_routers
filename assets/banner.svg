@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-labelledby="title desc">
+  <title id="title">JEV Router</title>
+  <desc id="desc">The right Claude model for every turn. Per-turn model routing for Claude Code, decided by TypeSafe's Jev: each new turn goes to Haiku, Sonnet or Opus.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="0.55" stop-color="#121a33"/>
+      <stop offset="1" stop-color="#1a1330"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.78" cy="0.5" r="0.55">
+      <stop offset="0" stop-color="#d97757" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#d97757" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f0a47a"/>
+      <stop offset="1" stop-color="#d97757"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#ffffff" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#8b93b8"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="400" fill="url(#bg)"/>
+  <rect width="1280" height="400" fill="url(#grid)"/>
+  <rect width="1280" height="400" fill="url(#glow)"/>
+
+  <!-- Left: name and tagline -->
+  <g font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="80" y="150" fill="#ffffff" font-size="76" font-weight="800" letter-spacing="-1.5">JEV Router</text>
+    <rect x="82" y="172" width="120" height="5" rx="2.5" fill="url(#accent)"/>
+    <text x="80" y="228" fill="#e6e9f5" font-size="30" font-weight="600">The right Claude model for every turn.</text>
+    <text x="80" y="272" fill="#9aa3c7" font-size="20">Per-turn model routing for Claude Code, decided by TypeSafe's Jev.</text>
+    <text x="80" y="302" fill="#9aa3c7" font-size="20">Simple turns run cheap. Hard ones get the strongest model.</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">
+      <rect x="80" y="330" width="178" height="36" rx="8" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.12"/>
+      <text x="98" y="354" fill="#f0a47a">$</text>
+      <text x="116" y="354" fill="#e6e9f5">jev-claude</text>
+    </g>
+  </g>
+
+  <!-- Right: one turn, one Jev decision, three models -->
+  <g font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17">
+    <!-- the user's turn -->
+    <rect x="770" y="176" width="136" height="48" rx="12" fill="#ffffff" fill-opacity="0.07" stroke="#ffffff" stroke-opacity="0.18"/>
+    <text x="838" y="206" fill="#e6e9f5" text-anchor="middle" font-weight="600">new turn</text>
+
+    <line x1="908" y1="200" x2="962" y2="200" stroke="#8b93b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- Jev -->
+    <circle cx="1004" cy="200" r="38" fill="url(#accent)"/>
+    <circle cx="1004" cy="200" r="46" fill="none" stroke="#d97757" stroke-opacity="0.35" stroke-width="2"/>
+    <text x="1004" y="207" fill="#1a1330" text-anchor="middle" font-size="21" font-weight="800">Jev</text>
+
+    <!-- branches -->
+    <path d="M1044 186 C1080 150, 1090 104, 1122 104" fill="none" stroke="#8b93b8" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="1050" y1="200" x2="1120" y2="200" stroke="#8b93b8" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M1044 214 C1080 250, 1090 296, 1122 296" fill="none" stroke="#8b93b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- models -->
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600">
+      <rect x="1126" y="84" width="104" height="40" rx="10" fill="#23d18b" fill-opacity="0.15" stroke="#23d18b"/>
+      <text x="1178" y="109" fill="#5eeab0" text-anchor="middle">haiku</text>
+      <rect x="1126" y="180" width="104" height="40" rx="10" fill="#29b8db" fill-opacity="0.15" stroke="#29b8db"/>
+      <text x="1178" y="205" fill="#6fd6f2" text-anchor="middle">sonnet</text>
+      <rect x="1126" y="276" width="104" height="40" rx="10" fill="#d670d6" fill-opacity="0.15" stroke="#d670d6"/>
+      <text x="1178" y="301" fill="#eba0eb" text-anchor="middle">opus</text>
+    </g>
+    <g fill="#8b93b8" font-size="13">
+      <text x="1178" y="142" text-anchor="middle">rename a variable</text>
+      <text x="1178" y="238" text-anchor="middle">fix a known bug</text>
+      <text x="1178" y="334" text-anchor="middle">debug a race</text>
+    </g>
+  </g>
+</svg>
