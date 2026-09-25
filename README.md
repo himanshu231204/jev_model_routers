@@ -99,6 +99,43 @@ session's tools, permissions, sessions (`/resume`), authentication and streaming
 See [`src/jev_router_live/README.md`](src/jev_router_live/README.md) and
 [`ARCHITECTURE.md`](ARCHITECTURE.md) §16 for how it works, debugging, and known limitations.
 
+#### See it in action
+
+Screens from one real `jev-claude` session in Claude Code 2.1.282. In these captures JEV was
+answered by the local stand-in [`scripts/fake_jev.py`](scripts/fake_jev.py) (the real JEV API
+was not reachable from the capture environment); Claude Code, the proxy and the Anthropic
+responses are real.
+
+**1. Claude Code starts on JEV Router** — `jev-claude` launches the normal Claude Code UI.
+
+![jev-claude starts Claude Code with JEV Router selected](assets/images/jev-claude-01-start.png)
+
+**2. `/model` shows "JEV Router"** as an extra row in Claude Code's own picker.
+
+![The /model picker with the JEV Router row](assets/images/jev-claude-02-model-picker.png)
+
+**3. A trivial turn goes to Haiku** — JEV is asked once; the file read and edit stay on Haiku,
+and the status line shows the routed model.
+
+![A rename task routed to Haiku](assets/images/jev-claude-03-trivial-turn-haiku.png)
+
+**4. A hard turn goes to Opus** — the next user turn asks JEV again and moves up.
+
+![A design question routed to Opus](assets/images/jev-claude-04-hard-turn-opus.png)
+
+**5. Picking a model yourself turns routing off** — the status line shows `⏸ manual` and
+JEV is not called.
+
+![Manual model selection bypasses JEV](assets/images/jev-claude-05-manual-model.png)
+
+**6. `jev-explain` shows why** a turn got its model.
+
+![jev-explain report](assets/images/jev-claude-06-explain.png)
+
+**7. The decision log** has one safe line per routed turn — no prompt, no keys.
+
+![Decision log](assets/images/jev-claude-07-decision-log.png)
+
 ---
 
 ## How It Works
