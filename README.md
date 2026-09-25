@@ -5,6 +5,7 @@
 <p align="center">
   <a href="https://github.com/himanshu231204/jev_model_routers/actions/workflows/ci.yml"><img src="https://github.com/himanshu231204/jev_model_routers/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pypi.org/project/jev-model-router/"><img src="https://img.shields.io/pypi/v/jev-model-router?color=d97757" alt="PyPI"></a>
+  <a href="https://github.com/himanshu231204/jev_model_routers/pkgs/container/jev_model_routers"><img src="https://img.shields.io/badge/ghcr.io-jev--model--router-2496ED?logo=docker&logoColor=white" alt="Docker image on GHCR"></a>
   <a href="https://github.com/himanshu231204/jev_model_routers/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue" alt="Python 3.11 | 3.12">
   <img src="https://img.shields.io/badge/dependencies-none-brightgreen" alt="Zero dependencies">
@@ -114,6 +115,28 @@ jev-claude --resume                 # sessions work as usual
 The session starts on **JEV Router**. Watch the status line — e.g.
 `claude-haiku-4-5-20251001 (p=0.97)` — to see which model each turn got. The full guide, with
 troubleshooting, is in [`docs/quickstart.md`](https://github.com/himanshu231204/jev_model_routers/blob/main/docs/quickstart.md).
+
+<details>
+<summary><b>Or run it with Docker</b> — no local Python/Node setup</summary>
+
+The image bundles `jev-claude`, `jev-codex` and the CLIs they wrap. Mount your Claude Code
+login (`~/.claude`) and your project directory, and pass the key as an environment variable:
+
+```bash
+docker run -it --rm \
+  -e TYPESAFE_API_KEY=your_key \
+  -v ~/.claude:/home/jev/.claude \
+  -v "$PWD":/work \
+  ghcr.io/himanshu231204/jev_model_routers        # entrypoint is jev-claude
+```
+
+Pass Claude Code arguments after the image name (they go straight to the entrypoint), e.g.
+`... jev_model_routers -p "fix the failing test"`. For `jev-codex`, override the entrypoint
+(`--entrypoint jev-codex`) and mount `~/.codex` instead. Images are built from source and
+published on tagged releases; see
+[`Dockerfile`](https://github.com/himanshu231204/jev_model_routers/blob/main/Dockerfile) and
+[`RELEASE.md`](https://github.com/himanshu231204/jev_model_routers/blob/main/RELEASE.md).
+</details>
 
 ## 🧠 How it works
 

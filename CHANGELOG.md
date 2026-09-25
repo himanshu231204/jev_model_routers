@@ -9,6 +9,10 @@ adheres to [Semantic Versioning](https://semver.org/). Releases are published to
 
 ## [Unreleased]
 
+### Added
+- Docker image (`Dockerfile`, published to `ghcr.io/himanshu231204/jev_model_routers` on
+  each tagged release) bundling `jev-claude`/`jev-codex` with the CLIs they wrap.
+
 ## [0.1.0] - 2026-09-25
 
 First public release: per-turn model routing for Claude Code, decided by TypeSafe's Jev.
