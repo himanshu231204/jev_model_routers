@@ -3,9 +3,11 @@ from __future__ import annotations
 import logging, os, time
 def sdk_ask_jev(*, prompt, current, context_tokens, models):
     start = time.time()
+    from jev_router_live.log import log
     try:
         import typesafe_sdk
     except ImportError:
+        log("JEV_CLIENT=sdk but typesafe_sdk is not installed (pip install jev-router[typesafe]); not routing")
         return None
     key = os.environ.get("JEV_API_KEY")
     if not key or not models:
@@ -26,5 +28,6 @@ def sdk_ask_jev(*, prompt, current, context_tokens, models):
                 "metrics": {"taskComplexity": 0.5, "reasoningRequired": 0.5, "toolComplexity": 0.5,
                             "contextSize": min(context_tokens / CONTEXT_WINDOW_TOKENS, 1)},
                 "request": {"state": state, "questions": questions}, "response": {}, "ms": int((time.time() - start) * 1000)}
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 - fail open, but visibly
+        log(f"routing failed (sdk), keeping {current}: {type(exc).__name__}")
         return None

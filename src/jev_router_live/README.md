@@ -24,24 +24,73 @@ jev-explain <session-id>  # shows why the last turn was routed the way it was
 ```
 
 Both commands launch the real upstream CLI (`claude` / `codex` must already be installed and
-logged in) and only choose the model for each fresh turn. Set `JEV_NO_STATUSLINE=1` to skip
-installing the bundled Claude Code status line, or `JEV_DEBUG=1` to log routing decisions to
-`~/.jev-claude.log`.
+logged in) and only choose the model for each fresh turn. `JEV_API_KEY` is the only credential
+read; without it `jev-claude` starts plain Claude Code with no proxy.
+
+In Claude Code, `/model` shows an extra **JEV Router** row, selected by default for the
+session (it is never saved as your default). Pick a real model to turn routing off; pick
+JEV Router again to turn it back on.
+
+| Variable | Effect |
+| --- | --- |
+| `JEV_API_KEY` | TypeSafe key for Jev. Required for routing. |
+| `JEV_ALLOW_FABLE=1` | Also offer Fable (bills extra usage credits). |
+| `JEV_NO_STATUSLINE=1` | Don't install the routing status line (yours is never overridden anyway). |
+| `JEV_DEBUG=1` | Add request-level tracing, including the first 60 characters of each routed prompt. |
+| `JEV_ENDPOINT` | Override the System One URL (testing). |
+| `JEV_CLIENT=sdk` | Use the optional TypeSafe SDK instead of stdlib HTTP (`pip install jev-router[typesafe]`). |
+
+## Debugging
+
+- `~/.jev-claude.log` always gets one safe line per routed turn
+  (`turn=… decision=sonnet model=claude-sonnet-5 confidence=0.99 latency=412ms reason=jev`),
+  the model catalog the proxy read, and every routing, catalog or upstream failure. Prompts,
+  keys and headers are never written there.
+- `jev-explain <session-id>` (or `/jev-explain`) shows the full last decision: prompt, Jev's
+  scores, recommendation and the policy reason. That data lives in an owner-only file under
+  `<tempdir>/jev-claude/` and is deleted after 7 days idle.
+- `reason=` values: `jev` (followed Jev), `override` (prompt said e.g. "use opus"),
+  `jev-unavailable` (Jev failed; kept current), `low-confidence-*`,
+  `downgrade-not-worth-cache-rebuild`, `…+unavailable` (nearest available tier), `…/no-change`.
+
+## Tests
+
+```bash
+python -m pytest -q                                   # everything, Jev mocked
+JEV_LIVE_TESTS=1 JEV_API_KEY=... \
+  python -m pytest tests/live/test_live_jev_api.py -s # real Jev: trivial/medium/hard
+```
+
+For a real Claude Code run without network access to Jev, `scripts/fake_jev.py` is a local
+System One stand-in: `python scripts/fake_jev.py 8765`, then
+`JEV_ENDPOINT=http://127.0.0.1:8765/v1/systemone JEV_API_KEY=local jev-claude -p "…"`.
 
 ## Known behavior (Claude Code)
 
 - **`[claude-code:unrecognized_model] {"model":"jev-router"}` on startup is harmless.**
-  Claude Code 2.1.281 validates the model name client-side before the first request; the
+  Claude Code 2.1.281+ validates the model name client-side before the first request; the
   sentinel `jev-router` is not in its catalog, so it prints this one-line warning (telemetry
   only — the emitter returns void, is try/caught, and is deduped per model id). The request
   still reaches the proxy and is rewritten to a real model; verified end-to-end: Claude
   completes responses with the warning present. The sentinel mechanism is intentional and
   must not be removed.
-- **Model catalog is best-effort.** The proxy records exact model ids from any `GET /v1/models`
-  Claude Code makes through it and prefers them. Claude Code 2.1.281 has not been observed
-  issuing that call in `-p` (print) runs, even with `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`
-  and a healthy upstream, so routing typically uses the static tier ids — which are verified
-  against Claude Code's own shipped model catalog (see `config.py` `TIERS`), never assumed.
+- **The proxy reads the model catalog itself.** Claude Code's gateway model discovery only
+  runs with an API key / `ANTHROPIC_AUTH_TOKEN` / `apiKeyHelper`, so with a claude.ai
+  subscription login it never calls `/v1/models`. On the first routed turn the proxy calls
+  `/v1/models` once with that request's own credential (2 s timeout) and offers Jev the newest
+  model per tier. If that fails, it uses the static ids in `config.py` `TIERS`, verified
+  against Claude Code's shipped model catalog — never invented ones.
+- **Claude Code resends a turn's first request.** 2.1.282 sends it twice with different
+  injected context; the proxy recognises the same turn and asks Jev once.
+
+## Known limitations
+
+- The interactive `/model` row is created by Claude Code from `ANTHROPIC_CUSTOM_MODEL_OPTION*`
+  (confirmed in 2.1.282's source); it depends on those variables staying supported.
+- The first routed turn of a process can take up to ~5 s longer in the worst case (2 s catalog
+  read + 3 s Jev deadline) when both are slow; normal cost is one Jev call (~0.3-1 s).
+- Routing is per turn, not per tool call: a turn that turns out harder than its prompt looked
+  stays on its model until the next user turn.
 
 ## Layout
 
@@ -49,7 +98,9 @@ installing the bundled Claude Code status line, or `JEV_DEBUG=1` to log routing 
 | --- | --- |
 | `config.py` | Tiers, thresholds, override phrases, Jev questions |
 | `policy.py` | Pure routing decision function |
-| `router.py` | Jev/System One HTTP call (stdlib `urllib`, no SDK) |
+| `router.py` | `ask_jev` dispatcher: stdlib client by default, SDK with `JEV_CLIENT=sdk` |
+| `stdlib_router.py` | The Jev/System One client (stdlib `urllib`): request, timeouts, retries, parsing |
+| `sdk_router.py` | Optional client via the TypeSafe SDK |
 | `proxy.py` | Claude Code per-turn proxy |
 | `codex_proxy.py` | Codex per-turn proxy |
 | `status.py` | Per-session decision file, used by the status line and `jev-explain` |

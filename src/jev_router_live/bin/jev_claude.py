@@ -15,8 +15,7 @@ from jev_router_live.env_file import load_env
 from jev_router_live.log import LOG_FILE
 from jev_router_live.proxy import start_proxy
 from jev_router_live.settings import read_saved_model, restore_saved_model
-
-HERE = Path(__file__).resolve().parent
+from jev_router_live.status import private_dir
 
 
 def _auto_model_env() -> dict[str, str]:
@@ -46,28 +45,35 @@ def _auto_model_env() -> dict[str, str]:
     return env
 
 
-def _statusline_args() -> list[str]:
+def _statusline_settings() -> Path | None:
     """Claude Code's UI shows the model it asked for, never the one the proxy routed to, so a
     status line is the only way to surface the decision. ``--settings`` merges rather than
     replaces, but a status line the user configured themselves still takes priority: theirs
-    is a deliberate choice and silently overwriting it would be worse than showing nothing."""
+    is a deliberate choice and silently overwriting it would be worse than showing nothing.
+
+    Returns a settings file to pass with ``--settings`` (the caller deletes it on exit), or
+    None. Claude Code executes the command in this file, so it is created with a unique name,
+    owner-only, inside a directory verified to be private -- never at a fixed shared path."""
     if os.environ.get("JEV_NO_STATUSLINE"):
-        return []
+        return None
     for directory in (Path.cwd() / ".claude", Path.home() / ".claude"):
         try:
             if json.loads((directory / "settings.json").read_text(encoding="utf-8")).get("statusLine"):
-                return []
+                return None
         except (OSError, ValueError):
             pass  # No settings file, or unreadable; nothing to preserve.
 
+    directory = private_dir()
+    if directory is None:
+        return None
     command = f'"{sys.executable}" -m jev_router_live.bin.jev_statusline'
-    file = Path(tempfile.gettempdir()) / "jev-claude" / "settings.json"
     try:
-        file.parent.mkdir(parents=True, exist_ok=True)
-        file.write_text(json.dumps({"statusLine": {"type": "command", "command": command}}))
+        fd, name = tempfile.mkstemp(prefix="settings-", suffix=".json", dir=directory)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump({"statusLine": {"type": "command", "command": command}}, fh)
     except OSError:
-        return []
-    return ["--settings", str(file)]
+        return None
+    return Path(name)
 
 
 def _resolve_claude() -> str | None:
@@ -78,7 +84,6 @@ def main() -> None:
     load_env()
 
     args = sys.argv[1:]
-    args += ["--add-dir", str(HERE.parent.parent)]
     env = dict(os.environ)
 
     claude = _resolve_claude()
@@ -91,6 +96,7 @@ def main() -> None:
         sys.exit(1)
 
     close = lambda: None  # noqa: E731
+    settings_file: Path | None = None
     saved_model_before = read_saved_model()
 
     if os.environ.get("JEV_API_KEY"):
@@ -99,7 +105,9 @@ def main() -> None:
         env["ANTHROPIC_BASE_URL"] = f"http://127.0.0.1:{handle.port}"
         env["CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY"] = "1"
         env.update(_auto_model_env())
-        args += _statusline_args()
+        settings_file = _statusline_settings()
+        if settings_file:
+            args += ["--settings", str(settings_file)]
         if os.environ.get("JEV_DEBUG") and sys.stdout.isatty():
             sys.stderr.write(f"[jev] routing decisions -> {LOG_FILE}\n")
     else:
@@ -117,6 +125,8 @@ def main() -> None:
     finally:
         close()
         restore_saved_model(saved_model_before)
+        if settings_file:
+            settings_file.unlink(missing_ok=True)
     sys.exit(code)
 
 

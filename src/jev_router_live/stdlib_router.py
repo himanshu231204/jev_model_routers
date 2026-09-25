@@ -10,6 +10,7 @@ import json
 import os
 import threading
 import time
+import urllib.error
 import urllib.request
 from typing import Any
 
@@ -60,6 +61,10 @@ def _post_with_wall_clock_timeout(payload: dict, headers: dict, timeout_s: float
     return result.get("raw"), None
 
 
+def _is_client_error(err: Exception) -> bool:
+    return isinstance(err, urllib.error.HTTPError) and 400 <= err.code < 500
+
+
 def stdlib_ask_jev(*, prompt: str, current: str, context_tokens: int, models: list[dict]) -> dict | None:
     """Asks Jev which exact model fits this prompt. Returns None on any failure, which the
     policy layer reads as "keep the current model" -- routing must never block a prompt.
@@ -96,8 +101,8 @@ def stdlib_ask_jev(*, prompt: str, current: str, context_tokens: int, models: li
             break
         timeout_s = min(THRESHOLDS.jev_timeout_ms / 1000.0, remaining)
         result, err = _post_with_wall_clock_timeout(request, headers, timeout_s)
-        if err is None:
-            break
+        if err is None or _is_client_error(err):
+            break  # success, or a 4xx (bad key, bad request) that a retry cannot fix
         attempt += 1
         if attempt > THRESHOLDS.jev_max_retries or time.time() - started >= deadline:
             break

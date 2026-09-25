@@ -75,7 +75,7 @@ The `jev-router run` command above makes one routing decision at session start. 
 proxy tools instead:
 
 ```bash
-echo "JEV_API_KEY=..." > ~/.jev-router.env
+echo "JEV_API_KEY=..." > ~/.jev-router.env   # a TypeSafe key; JEV_API_KEY is the only variable read
 
 jev-claude               # launches Claude Code, routing each new user turn
 jev-codex                 # launches OpenAI Codex, routing each new user turn
@@ -83,9 +83,21 @@ jev-explain <session-id>  # shows why the last turn was routed the way it was
 ```
 
 These wrap the real `claude`/`codex` CLIs with a local HTTP proxy in front of their API, so a
-session's `/model` picker, tools, permissions, and streaming are untouched — only the model
-picked for each fresh turn changes. See [`src/jev_router_live/README.md`](src/jev_router_live/README.md)
-and [`ARCHITECTURE.md`](ARCHITECTURE.md) §16 for how it works.
+session's tools, permissions, sessions (`/resume`), authentication and streaming are untouched
+— only the model picked for each fresh turn changes. In Claude Code:
+
+- **`/model` → "JEV Router"** (selected by default) routes each new turn: JEV is asked once per
+  turn, picks from your account's own models (newest Haiku / Sonnet / Opus), and that model is
+  pinned for the turn's whole tool loop.
+- **`/model` → any real model** turns routing off; requests pass through untouched. Selecting
+  "JEV Router" again turns it back on.
+- **JEV unavailable** (no key, timeout, error): Claude Code keeps working on a safe fallback
+  (Opus); nothing blocks.
+- Each decision is logged as one safe line (model, confidence, latency, reason — no prompt) in
+  `~/.jev-claude.log`; `JEV_DEBUG=1` adds request-level tracing.
+
+See [`src/jev_router_live/README.md`](src/jev_router_live/README.md) and
+[`ARCHITECTURE.md`](ARCHITECTURE.md) §16 for how it works, debugging, and known limitations.
 
 ---
 
@@ -206,9 +218,9 @@ jev-codex                      # Launch OpenAI Codex with per-turn (live proxy) 
 jev-explain <session-id>       # Explain the live proxy's last routing decision
 ```
 
-Passthrough (no routing) happens automatically whenever `TYPESAFE_API_KEY` (for `jev-router
-run`) or `JEV_API_KEY`/`TYPESAFE_API_KEY` (for `jev-claude`/`jev-codex`) is unset — there's no
-separate flag for it.
+Passthrough (no routing) happens automatically whenever the key is unset — `TYPESAFE_API_KEY`
+for `jev-router run`, `JEV_API_KEY` (only) for `jev-claude`/`jev-codex`. There's no separate
+flag for it.
 
 ---
 
