@@ -23,6 +23,25 @@ For the latest development version: `pip install git+https://github.com/himanshu
 Optional: `pip install "jev-model-router[typesafe]"` and `JEV_CLIENT=sdk` to call Jev through the
 official TypeSafe SDK instead of the built-in stdlib client.
 
+**Or, without a local Python/Node setup**, use the Docker image — it bundles `jev-claude`,
+`jev-codex` and the CLIs they wrap:
+
+```bash
+docker run -it --rm \
+  -e TYPESAFE_API_KEY=your_typesafe_key \
+  -v ~/.claude:/home/jev/.claude \
+  -v "$PWD":/work \
+  ghcr.io/himanshu231204/jev_model_routers        # entrypoint is jev-claude
+```
+
+The key goes in as `-e TYPESAFE_API_KEY=...` instead of a file, so you can skip step 3 below.
+Mount `~/.claude` so Claude Code's own login persists between runs, and your project directory
+at `/work` (the image's working directory). Pass Claude Code arguments after the image name —
+they go straight to `jev-claude` — e.g. `... jev_model_routers -p "fix the failing test"`. For
+`jev-codex`, add `--entrypoint jev-codex` and mount `~/.codex` instead of `~/.claude`. The image
+is built from source and published on tagged releases; see
+[`Dockerfile`](../Dockerfile) and [`RELEASE.md`](../RELEASE.md).
+
 ## 3. Add your key
 
 `TYPESAFE_API_KEY` is the only variable the router reads. Put it in a file so every terminal has it:
