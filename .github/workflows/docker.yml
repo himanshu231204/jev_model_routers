@@ -1,10 +1,13 @@
 name: Publish Docker image
 
-# Runs on the same v* tags as .github/workflows/publish.yml (see RELEASE.md). Builds the image
-# from this commit's source (not from the PyPI package) and pushes it to GHCR.
+# Runs on the same v* tags as .github/workflows/publish.yml (see RELEASE.md), and can be run
+# manually (workflow_dispatch) to (re)build an image for the version in version.py — e.g. for a
+# tag pushed before this workflow existed. Builds the image from this commit's source (not from
+# the PyPI package) and pushes it to GHCR.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,7 +23,12 @@ jobs:
       - name: Compute image tags
         id: meta
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            # Manual run from a branch: the image version is the package version.
+            version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' src/jev_router_live/version.py)
+          fi
           tags="ghcr.io/${{ github.repository }}:${version}"
           # Pre-releases (0.2.0rc1, 0.2.0b1, ...) don't move the "latest" tag.
           case "${version}" in
