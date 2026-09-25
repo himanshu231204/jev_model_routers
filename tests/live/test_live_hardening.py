@@ -223,6 +223,46 @@ def test_resent_turn_with_different_reminders_asks_jev_once(world):
     assert [b["model"] for b in upstream.bodies] == ["claude-haiku-4-5-20251001"] * 2
 
 
+def test_prompt_suggestion_request_does_not_call_jev_or_change_model(world):
+    """After each turn Claude Code asks, in the same conversation, for a suggested next prompt.
+    It looks like a user turn but must not re-route the conversation."""
+    route = Route(choice="claude-haiku-4-5-20251001")
+    upstream, handle = world(route)
+    _post(handle.port, _turn("rename x"))
+
+    suggestion = _turn("rename x")
+    suggestion["messages"] += [
+        {"role": "assistant", "content": "Done."},
+        {"role": "user", "content": [{"type": "text", "text": "[SUGGESTION MODE: Suggest what the user might naturally type next.]"}]},
+    ]
+    route.choice = "claude-sonnet-5"
+    _post(handle.port, suggestion)
+
+    assert len(route.calls) == 1
+    assert [b["model"] for b in upstream.bodies] == ["claude-haiku-4-5-20251001"] * 2
+
+
+def test_local_command_transcript_is_not_sent_to_jev():
+    from jev_router_live.proxy import new_turn_prompt
+
+    body = _turn("x")
+    body["messages"][-1]["content"] = [
+        {"type": "text", "text": "<command-name>/model</command-name>\n<command-message>model</command-message>\n<command-args></command-args>"},
+        {"type": "text", "text": "<local-command-stdout>Kept model as jev-router</local-command-stdout>"},
+        {"type": "text", "text": "RENAME: rename x to count"},
+    ]
+    assert new_turn_prompt(body) == "RENAME: rename x to count"
+    body["messages"][-1]["content"] = body["messages"][-1]["content"][:2]
+    assert new_turn_prompt(body) is None  # a bare local command is not a task
+
+
+def test_catalog_is_read_on_the_first_sentinel_request_even_without_a_turn(world):
+    upstream, handle = world(Route())
+    _post(handle.port, {"model": AUTO_MODEL, "messages": [{"role": "user", "content": "warmup"}]})
+    assert len(upstream.gets) == 1
+    assert upstream.bodies[0]["model"] == "claude-opus-5-5"  # catalog id, not the static guess
+
+
 def test_same_prompt_on_a_later_turn_is_routed_again(world):
     route = Route(choice="claude-haiku-4-5-20251001")
     upstream, handle = world(route)

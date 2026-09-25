@@ -22,6 +22,9 @@ project is at `0.1.0` (see `pyproject.toml`) and everything below is unreleased.
 - Auxiliary calls on the sentinel ran on a static Opus id; they now use their session's routed
   model (or the catalog's Opus).
 - 4xx answers from JEV (e.g. a bad key) are no longer retried.
+- Interactive Claude Code's next-prompt suggestion request re-routed the conversation after
+  every turn (an extra JEV call and a silent model change); it is now treated as auxiliary.
+  Local slash-command transcripts (`/model` etc.) are no longer sent to JEV as part of the prompt.
 - Security: status files are created owner-only (0600) atomically, the status directory is
   refused if another user owns it, and the status-line `--settings` file is unique and private
   instead of a fixed path in the shared temp dir. `jev-claude` no longer passes

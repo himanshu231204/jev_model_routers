@@ -41,6 +41,14 @@ from jev_router_live.status import write_decision, write_status
 ANTHROPIC_BASE_URL = "https://api.anthropic.com"
 
 _SYSTEM_REMINDER_RE = re.compile(r"<system-reminder>.*?</system-reminder>", re.S)
+# Claude Code records local slash commands (e.g. `/model`) and their output in the next user
+# message; they are not part of the task and are noise to the router.
+_LOCAL_COMMAND_RE = re.compile(
+    r"<(command-name|command-message|command-args|local-command-stdout|local-command-stderr)>.*?</\1>", re.S
+)
+# Background requests Claude Code sends in the middle of a conversation that look like a user
+# turn but are not one: the next-prompt suggestion shown in the input box.
+_AUXILIARY_PROMPT_RE = re.compile(r"^\[SUGGESTION MODE:")
 
 
 def sanitize_schema(node: Any) -> None:
@@ -92,7 +100,10 @@ def new_turn_prompt(body: dict) -> str | None:
         text = "\n".join(b.get("text", "") for b in content if b.get("type") == "text")
     else:
         return None
-    return _SYSTEM_REMINDER_RE.sub("", text).strip() or None
+    prompt = _LOCAL_COMMAND_RE.sub("", _SYSTEM_REMINDER_RE.sub("", text)).strip()
+    if not prompt or _AUXILIARY_PROMPT_RE.match(prompt):
+        return None
+    return prompt
 
 
 def apply_tier(body: dict, tier_name: str, model: str | None = None) -> dict:
@@ -283,6 +294,9 @@ def _make_handler(
                         write_status(session_of(body), {"manual": True, "at": _now_ms()})
                     return raw
 
+                # First sentinel request of the process (Claude Code makes one at startup) reads
+                # the catalog, so it is normally ready before the user's first turn.
+                catalog_loader.ensure(self.headers)
                 key = conversation_key(body)
                 state = convos.get(key)
                 current = state.tier or FALLBACK_TIER
@@ -296,7 +310,6 @@ def _make_handler(
                 resent = state.tier is not None and turn == state.routed_turn
 
                 if prompt and not explaining and not resent:
-                    catalog_loader.ensure(self.headers)
                     models = [m for m in claude_models(list(catalog.values())) if m["tier"] in available_tiers()]
                     available = sorted({m["tier"] for m in models}, key=rank_of)
                     current_model = state.model or _model_for_tier(models, current)
