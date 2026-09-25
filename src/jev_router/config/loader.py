@@ -33,6 +33,8 @@ def load(cli_args: dict | None = None, env: dict | None = None,
         cfg["router"]["policy"] = env["JEV_ROUTER_POLICY"]
     if env.get("JEV_TIMEOUT_MS"):
         cfg["jev"]["timeout_ms"] = int(env["JEV_TIMEOUT_MS"])
+    if env.get("JEV_CLIENT"):
+        cfg["jev"]["client"] = env["JEV_CLIENT"]
     for k, v in (cli_args or {}).items():
         head, _, tail = k.partition(".")
         if head in cfg and isinstance(cfg[head], dict):

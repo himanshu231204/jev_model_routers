@@ -39,6 +39,8 @@ pip install -e .
 pip install jev-router
 ```
 
+Optional: `pip install jev-router[typesafe]` + `jev.client: sdk` (or `JEV_CLIENT=sdk`) to route via the official SDK. Default stays stdlib with zero extra deps.
+
 Verify:
 
 ```bash

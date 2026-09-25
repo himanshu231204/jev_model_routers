@@ -14,6 +14,14 @@ def _clamp(v, default=0.0):
 
 def normalize_jev_payload(raw: dict | None, latency_ms: int) -> JEVDecision | None:
     if not isinstance(raw, dict):
+        choices = getattr(raw, "choices", None)
+        if isinstance(choices, dict) and "tier" in choices:
+            ans = choices["tier"]
+            choice = getattr(ans, "choice", None)
+            conf = getattr(ans, "confidence", 0.0)
+            tier = choice if choice in ("fast", "balanced", "strong") else None
+            return JEVDecision(requested_model=None, requested_tier=tier,
+                               confidence=_clamp(conf), latency_ms=latency_ms, raw_response=None)
         return None
     answers = raw.get("answers", {})
     tier_answer = answers.get("tier", {}) if isinstance(answers, dict) else {}

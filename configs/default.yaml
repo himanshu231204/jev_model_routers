@@ -7,6 +7,7 @@ jev:
   timeout_ms: 1500
   deadline_ms: 3000
   max_retries: 1
+  client: stdlib
 
 models:
   allow:

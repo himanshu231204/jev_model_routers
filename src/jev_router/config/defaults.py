@@ -1,6 +1,6 @@
 """Default configuration mirror of configs/default.yaml (stdlib only, no yaml dep)."""
 DEFAULTS = {"router": {"enabled": True, "policy": "default", "fail_mode": "open"},
-            "jev": {"timeout_ms": 1500, "deadline_ms": 3000, "max_retries": 1},
+            "jev": {"timeout_ms": 1500, "deadline_ms": 3000, "max_retries": 1, "client": "stdlib"},
             "models": {"allow": ["anthropic/claude-fable", "anthropic/claude-haiku",
                                 "anthropic/claude-sonnet", "anthropic/claude-opus",
                                 "openai/coding-strong"]},

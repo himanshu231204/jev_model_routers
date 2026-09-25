@@ -16,3 +16,10 @@ def test_validate_rejects_bad_policy():
     except ValueError:
         return
     raise AssertionError("should have raised")
+
+def test_config_accepts_jev_client_kind():
+    from jev_router.config.loader import load
+    cfg = load(cli_args={}, env={}, project_path=None, user_path=None)
+    assert cfg["jev"]["client"] == "stdlib"
+    cfg2 = load(cli_args={}, env={"JEV_CLIENT": "sdk"}, project_path=None, user_path=None)
+    assert cfg2["jev"]["client"] == "sdk"

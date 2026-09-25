@@ -6,7 +6,7 @@ from jev_router.config.loader import load
 from jev_router.contracts.models import ModelCapabilities, ModelSpec
 from jev_router.contracts.requests import NormalizedRequest
 from jev_router.core.router import Router
-from jev_router.jev.client import JevClient
+from jev_router.jev import get_jev_client
 from jev_router.state.memory import MemoryStore
 
 # Tier/capability/compatible-agent metadata for the ids shipped in configs/default.yaml's
@@ -54,7 +54,7 @@ def run_run(args: dict) -> int:
     name = args.get("agent", "claude_code")
     adapter = get_adapter(name)
     cfg = load()
-    jev = JevClient(timeout_ms=cfg["jev"]["timeout_ms"], deadline_ms=cfg["jev"]["deadline_ms"],
+    jev = get_jev_client(cfg, timeout_ms=cfg["jev"]["timeout_ms"], deadline_ms=cfg["jev"]["deadline_ms"],
                      max_retries=cfg["jev"]["max_retries"])
     router = Router(jev_client=jev, store=MemoryStore(), candidates=_candidates(cfg), privacy=cfg["privacy"])
     request = NormalizedRequest(request_id="cli_run", agent=name, session_id="cli-session",
