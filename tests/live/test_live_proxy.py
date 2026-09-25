@@ -91,3 +91,28 @@ def test_start_proxy_head_probe_and_passthrough_of_manual_model():
         conn.close()
     finally:
         handle.close()
+
+
+def test_new_turn_prompt_skips_trailing_system_message():
+    # Current Claude Code appends a role:"system" context message after the user's prompt.
+    body = {
+        "tools": [{}],
+        "messages": [
+            {"role": "user", "content": [{"type": "text", "text": "rename x"}]},
+            {"role": "system", "content": [{"type": "text", "text": "skills listing..."}]},
+        ],
+    }
+    assert new_turn_prompt(body) == "rename x"
+
+
+def test_new_turn_prompt_trailing_system_after_tool_result_is_continuation():
+    body = {
+        "tools": [{}],
+        "messages": [
+            {"role": "user", "content": "rename x"},
+            {"role": "assistant", "content": [{"type": "tool_use", "id": "t", "name": "Bash", "input": {}}]},
+            {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t", "content": "ok"}]},
+            {"role": "system", "content": [{"type": "text", "text": "reminder"}]},
+        ],
+    }
+    assert new_turn_prompt(body) is None

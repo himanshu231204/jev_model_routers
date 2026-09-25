@@ -7,16 +7,16 @@ def sdk_ask_jev(*, prompt, current, context_tokens, models):
         import typesafe_sdk
     except ImportError:
         return None
-    key = os.environ.get("JEV_API_KEY") or os.environ.get("TYPESAFE_API_KEY")
+    key = os.environ.get("JEV_API_KEY")
     if not key or not models:
         return None
     logging.getLogger("typesafe_sdk").setLevel(logging.WARNING)
     try:
-        from jev_router_live.config import QUESTIONS, THRESHOLDS, question_for_models, CONTEXT_WINDOW_TOKENS
+        from jev_router_live.config import QUESTIONS, THRESHOLDS, question_for_models, CONTEXT_WINDOW_TOKENS, JEV_MODEL
         questions = {**QUESTIONS, "model": question_for_models(models)}
         retry = typesafe_sdk.RetryPolicy(max_retries=THRESHOLDS.jev_max_retries, timeout=THRESHOLDS.jev_timeout_ms / 1000.0)
-        base = os.environ.get("JEV_ENDPOINT") or os.environ.get("TYPESAFE_BASE_URL") or "https://api.typesafe.ai"
-        with typesafe_sdk.TypeSafeClient(api_key=key, base_url=base, model="jev-latest", retry=retry) as client:
+        base = os.environ.get("JEV_BASE_URL") or "https://api.typesafe.ai"
+        with typesafe_sdk.TypeSafeClient(api_key=key, base_url=base, model=JEV_MODEL, retry=retry) as client:
             state = {"request": prompt, "session": {"current_model": current, "context_tokens": context_tokens},
                      "environment": {"available_models": [m["id"] for m in models]}}
             result = client.system_one(state, questions)

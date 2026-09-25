@@ -15,6 +15,7 @@ from typing import Any
 
 from jev_router_live.config import (
     COMPLEXITY_MAX_SCORE,
+    JEV_MODEL,
     CONTEXT_WINDOW_TOKENS,
     QUESTIONS,
     THRESHOLDS,
@@ -68,12 +69,13 @@ def stdlib_ask_jev(*, prompt: str, current: str, context_tokens: int, models: li
     """
     if not models:
         return None
-    api_key = os.environ.get("JEV_API_KEY") or os.environ.get("TYPESAFE_API_KEY")
+    api_key = os.environ.get("JEV_API_KEY")
     if not api_key:
         return None
 
     started = time.time()
     request = {
+        "model": JEV_MODEL,
         "state": {
             "request": prompt,
             "session": {"current_model": current, "context_tokens": context_tokens},

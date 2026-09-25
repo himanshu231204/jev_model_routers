@@ -36,6 +36,7 @@ def decide(
     current: str,
     available: list[str],
     context_tokens: int = 0,
+    first_turn: bool = False,
 ) -> dict[str, Any]:
     """Turns a Jev answer into the model we will actually run. Pure and total: any missing,
     malformed, or unavailable input falls back to the model already in use.
@@ -68,7 +69,9 @@ def decide(
         if rank_of(target) > ceiling:
             return settle(TIER_NAMES[ceiling], "low-confidence-capped")
 
-    if rank_of(target) < rank_of(current) and context_tokens > THRESHOLDS.downgrade_max_context_tokens:
+    # The cache-rebuild guard protects an already-pinned model; on a conversation's first
+    # decision nothing is pinned yet, so a large (system-prompt-heavy) context must not veto it.
+    if not first_turn and rank_of(target) < rank_of(current) and context_tokens > THRESHOLDS.downgrade_max_context_tokens:
         return settle(current, "downgrade-not-worth-cache-rebuild")
 
     return settle(target, "jev")

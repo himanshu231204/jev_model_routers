@@ -1,7 +1,7 @@
 """The Claude Code per-turn routing proxy.
 
 A local HTTP server sits between Claude Code and ``api.anthropic.com``. Claude Code is told
-to use it as ``ANTHROPIC_BASE_URL`` and to offer a sentinel "Jev Router" row in `/model`
+to use it as ``ANTHROPIC_BASE_URL`` and to offer a sentinel "JEV Router" row in `/model`
 (see ``bin/jev_claude.py``). Every request whose ``model`` is that sentinel gets a fresh
 routing decision (for a genuinely new user turn) or the tier already chosen for this
 conversation (for a tool-call continuation) rewritten into the body before it is forwarded
@@ -15,13 +15,16 @@ import os
 import re
 import socket
 import ssl
+import sys
 import threading
+import traceback
 from hashlib import sha1
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 from urllib.parse import urlparse
 
 from jev_router_live.config import (
+    FALLBACK_TIER,
     TIERS,
     available_tiers,
     id_of,
@@ -31,7 +34,7 @@ from jev_router_live.config import (
     tier_of,
     tier_spec,
 )
-from jev_router_live.log import debug
+from jev_router_live.log import debug, log
 from jev_router_live.policy import decide
 from jev_router_live.router import ask_jev
 from jev_router_live.status import write_decision, write_status
@@ -75,7 +78,9 @@ def new_turn_prompt(body: dict) -> str | None:
     tools = body.get("tools")
     if not isinstance(tools, list) or not tools:
         return None  # auxiliary call
-    messages = body.get("messages") or []
+    # Current Claude Code appends a role:"system" context message after the user's own
+    # message, so the turn is decided by the last non-system message.
+    messages = [m for m in body.get("messages") or [] if m.get("role") != "system"]
     last = messages[-1] if messages else None
     if not last or last.get("role") != "user":
         return None
@@ -134,6 +139,12 @@ def claude_models(catalog: list[dict] | None = None) -> list[dict]:
     if models:
         return models
     return [{"id": t.id, "tier": t.name, "description": t.id} for t in TIERS]
+
+
+def fallback_model(catalog: dict[str, dict]) -> str:
+    """Model used when routing cannot decide: the account's newest Opus from its own catalog,
+    else the static Opus id."""
+    return _model_for_tier(claude_models(list(catalog.values())), FALLBACK_TIER) or id_of(FALLBACK_TIER)
 
 
 def _model_for_tier(models: list[dict], tier: str) -> str | None:
@@ -244,7 +255,7 @@ def _make_handler(
 
                 key = conversation_key(body)
                 state = convos.get(key)
-                current = state.tier or "opus"
+                current = state.tier or FALLBACK_TIER
                 prompt = new_turn_prompt(body)
                 explaining = bool(prompt and "<jev-explain>" in prompt)
                 fresh: dict | None = None
@@ -255,6 +266,8 @@ def _make_handler(
                     current_model = state.model or _model_for_tier(models, current)
                     context_tokens = round(len(json.dumps(body.get("messages"))) / 4)
                     jev = route(prompt=prompt, current=current_model, context_tokens=context_tokens, models=models)
+                    if not isinstance(jev, dict) or not isinstance(jev.get("choice"), str):
+                        jev = None  # Unusable answer: fail open exactly as if Jev had not answered.
                     chosen = next((m for m in models if m["id"] == (jev or {}).get("choice")), None)
                     tier_answer = {**jev, "choice": chosen["tier"] if chosen else None} if jev else None
                     decision = decide(
@@ -263,6 +276,7 @@ def _make_handler(
                         current=current,
                         available=available,
                         context_tokens=context_tokens,
+                        first_turn=state.tier is None,
                     )
                     tier, reason = decision["tier"], decision["reason"]
                     if should_use_exact_model(reason, chosen["tier"] if chosen else None, tier):
@@ -278,9 +292,9 @@ def _make_handler(
                         "confidence": (jev or {}).get("confidence"),
                         "metrics": (jev or {}).get("metrics"),
                         "reason": reason,
-                        "jev": {"request": jev["request"], "response": jev["response"]} if jev else None,
+                        "jev": {"request": jev.get("request"), "response": jev.get("response")} if jev else None,
                     }
-                    jev_desc = f"{jev['ms']}ms p={jev['confidence']:.2f}" if jev else "no-jev"
+                    jev_desc = f"{jev.get('ms')}ms p={jev.get('confidence')}" if jev else "no-jev"
                     debug(
                         f"{key} {jev_desc} {current} -> {tier} ({reason}) "
                         f"ctx~{context_tokens} | {prompt[:60]}"
@@ -294,8 +308,13 @@ def _make_handler(
                     write_decision(session_of(body) or key, {"tier": tier, **fresh, "at": _now_ms()})
                 return json.dumps(body).encode("utf-8")
             except Exception as exc:  # noqa: BLE001
-                debug(f"passthrough, could not process body: {exc}")
-                return raw
+                # Routing must never cost the user their turn, but the sentinel is not a real
+                # model: forwarding it unchanged would be rejected upstream. Fall back instead.
+                log(f"routing error, falling back to {fallback_model(catalog)}: {exc!r}")
+                if not is_auto(body.get("model")):
+                    return raw
+                body["model"] = fallback_model(catalog)
+                return json.dumps(body).encode("utf-8")
 
         def _proxy(self, body: bytes) -> None:
             out = self._rewrite(body) if self.command == "POST" else body
@@ -326,25 +345,67 @@ def _make_handler(
                 self.wfile.write(payload)
                 return
 
-            data = upstream.read()
-            if is_models:
-                try:
-                    for model in json.loads(data.decode("utf-8")).get("data", []):
-                        if tier_of(model.get("id")):
-                            catalog[model["id"]] = model
-                except ValueError as exc:
-                    debug(f"could not read Claude model catalog: {exc}")
+            try:
+                # Framing and hop-by-hop headers describe the upstream connection, not ours:
+                # http.client has already de-chunked the body, and send_response writes its own
+                # Server/Date. Forwarding upstream's `Transfer-Encoding: chunked` next to our
+                # Content-Length is invalid HTTP -- Node rejects it and resets the socket, which
+                # is what surfaced as WinError 10054 in the terminal.
+                self.send_response(upstream.status)
+                for k, v in upstream.getheaders():
+                    if k.lower() not in _HOP_HEADERS:
+                        self.send_header(k, v)
 
-            resp_headers = {k: v for k, v in upstream.getheaders() if k.lower() != "content-length"}
-            self.send_response(upstream.status)
-            for k, v in resp_headers.items():
-                self.send_header(k, v)
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
-            conn.close()
+                if upstream.chunked and not is_models:
+                    # Streaming (SSE): relay each piece as it arrives, re-chunked for our client.
+                    self.send_header("Transfer-Encoding", "chunked")
+                    self.end_headers()
+                    while chunk := upstream.read1(65536):
+                        self.wfile.write(b"%x\r\n%s\r\n" % (len(chunk), chunk))
+                        self.wfile.flush()
+                    self.wfile.write(b"0\r\n\r\n")
+                    return
+
+                data = upstream.read()
+                if is_models:
+                    _record_catalog(catalog, data)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            finally:
+                conn.close()
 
     return Handler
+
+
+_HOP_HEADERS = {"content-length", "transfer-encoding", "connection", "keep-alive", "server", "date"}
+
+
+def _record_catalog(catalog: dict[str, dict], data: bytes) -> None:
+    try:
+        for model in json.loads(data.decode("utf-8")).get("data", []):
+            if tier_of(model.get("id")):
+                catalog[model["id"]] = model
+    except ValueError as exc:
+        debug(f"could not read Claude model catalog: {exc}")
+        return
+    debug(f"model catalog: {sorted(catalog)}")
+
+
+class _ProxyServer(ThreadingHTTPServer):
+    """Keeps the proxy's own errors out of the terminal Claude Code is drawing on.
+
+    A client dropping its connection (Claude Code closing an idle keep-alive socket, or
+    exiting mid-stream) is normal and not an error. Anything else is a real bug: it is logged
+    with its traceback via ``log`` (a file in interactive mode) instead of the stdlib's
+    default of printing to stderr over the TUI."""
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        exc = sys.exc_info()[1]
+        if isinstance(exc, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)):
+            debug(f"client disconnected: {exc!r}")
+            return
+        log(f"proxy error handling request from {client_address}:\n{traceback.format_exc()}")
 
 
 def _now_ms() -> int:
@@ -369,7 +430,7 @@ def start_proxy(upstream_url: str = ANTHROPIC_BASE_URL, route: Callable[..., dic
     convos = _Convos()
     catalog: dict[str, dict] = {}
     handler_cls = _make_handler(upstream_url, route, convos, catalog)
-    server = ThreadingHTTPServer(("127.0.0.1", 0), handler_cls)
+    server = _ProxyServer(("127.0.0.1", 0), handler_cls)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return ProxyHandle(server, thread)

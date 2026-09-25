@@ -64,7 +64,7 @@ def main() -> None:
     os.environ["JEV_CODEX_STATUS_ID"] = status_id
     close = lambda: None  # noqa: E731
 
-    if os.environ.get("JEV_API_KEY") or os.environ.get("TYPESAFE_API_KEY"):
+    if os.environ.get("JEV_API_KEY"):
         handle = start_codex_proxy(status_id=status_id)
         close = handle.close
         args = codex_args(f"http://127.0.0.1:{handle.port}", args)

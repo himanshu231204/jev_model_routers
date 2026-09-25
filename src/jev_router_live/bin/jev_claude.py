@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def _auto_model_env() -> dict[str, str]:
-    """Registers "Jev Router" as an extra row in Claude Code's /model picker and starts the
+    """Registers "JEV Router" as an extra row in Claude Code's /model picker and starts the
     session on it. Claude Code sends the id verbatim because it does not validate model
     names behind a custom base URL, which is what lets the proxy tell "route this" from "the
     user picked a model". Capabilities are declared so Claude Code still composes thinking
@@ -28,13 +28,15 @@ def _auto_model_env() -> dict[str, str]:
     cannot accept."""
     env = {
         "ANTHROPIC_CUSTOM_MODEL_OPTION": AUTO_MODEL,
-        "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME": "Jev Router",
+        "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME": "JEV Router",
         "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION": "Route each turn to the cheapest model that can do it",
         "ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES": (
             "thinking,adaptive_thinking,interleaved_thinking,effort,max_effort"
         ),
         # Some Claude Code versions validate the model client-side before it reaches the
         # proxy; this defers to the API so "jev-router" can pass through for rewriting.
+        # 2.1.281 still prints a one-line [claude-code:unrecognized_model] warning for the
+        # sentinel -- advisory only (telemetry, deduped); the request is routed regardless.
         "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT": "1",
     }
     # ANTHROPIC_MODEL applies to this session only and is never written to settings, so the
@@ -91,7 +93,7 @@ def main() -> None:
     close = lambda: None  # noqa: E731
     saved_model_before = read_saved_model()
 
-    if os.environ.get("JEV_API_KEY") or os.environ.get("TYPESAFE_API_KEY"):
+    if os.environ.get("JEV_API_KEY"):
         handle = start_proxy()
         close = handle.close
         env["ANTHROPIC_BASE_URL"] = f"http://127.0.0.1:{handle.port}"
@@ -103,7 +105,7 @@ def main() -> None:
     else:
         sys.stderr.write(
             "[jev] no JEV_API_KEY found - starting Claude Code without routing\n"
-            f"[jev] set it in {Path.home() / '.jev-claude.env'} to enable routing\n"
+            f"[jev] add JEV_API_KEY=... to {Path.home() / '.jev-router.env'} to enable routing\n"
         )
 
     try:

@@ -43,9 +43,9 @@ def _decision(reason: str = "") -> str:
 
 def format_explanation(status: dict[str, Any] | None) -> str:
     if not status:
-        return "Jev Router: no routing decision has been recorded for this session."
+        return "JEV Router: no routing decision has been recorded for this session."
     if status.get("manual"):
-        return "Jev Router: routing is paused because you selected a model manually."
+        return "JEV Router: routing is paused because you selected a model manually."
 
     metrics = status.get("metrics") or {}
     jev = status.get("jev") or {}
@@ -61,7 +61,7 @@ def format_explanation(status: dict[str, Any] | None) -> str:
 
     lines = [
         f"┌{'─' * _WIDTH}┐",
-        _row("Jev Router"),
+        _row("JEV Router"),
         _row(),
         _row("Jev request"),
         *_wrapped("Prompt: ", status.get("prompt") or "not recorded"),

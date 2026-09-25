@@ -28,6 +28,21 @@ logged in) and only choose the model for each fresh turn. Set `JEV_NO_STATUSLINE
 installing the bundled Claude Code status line, or `JEV_DEBUG=1` to log routing decisions to
 `~/.jev-claude.log`.
 
+## Known behavior (Claude Code)
+
+- **`[claude-code:unrecognized_model] {"model":"jev-router"}` on startup is harmless.**
+  Claude Code 2.1.281 validates the model name client-side before the first request; the
+  sentinel `jev-router` is not in its catalog, so it prints this one-line warning (telemetry
+  only — the emitter returns void, is try/caught, and is deduped per model id). The request
+  still reaches the proxy and is rewritten to a real model; verified end-to-end: Claude
+  completes responses with the warning present. The sentinel mechanism is intentional and
+  must not be removed.
+- **Model catalog is best-effort.** The proxy records exact model ids from any `GET /v1/models`
+  Claude Code makes through it and prefers them. Claude Code 2.1.281 has not been observed
+  issuing that call in `-p` (print) runs, even with `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`
+  and a healthy upstream, so routing typically uses the static tier ids — which are verified
+  against Claude Code's own shipped model catalog (see `config.py` `TIERS`), never assumed.
+
 ## Layout
 
 | Module | Responsibility |

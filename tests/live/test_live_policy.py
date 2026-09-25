@@ -60,6 +60,57 @@ def test_decide_downgrade_blocked_by_large_context():
     assert result["reason"] == "downgrade-not-worth-cache-rebuild/no-change"
 
 
+def test_decide_first_turn_allows_downgrade_despite_large_context():
+    """The cache-rebuild guard exists to protect an already-pinned model. On a conversation's
+    first decision nothing is pinned yet, so a large (system-prompt-heavy) context must not
+    block Jev's downgrade."""
+    result = decide(
+        prompt="rename x to count",
+        jev={"choice": "haiku", "confidence": 0.95},
+        current="opus",
+        available=["haiku", "sonnet", "opus"],
+        context_tokens=50_000,
+        first_turn=True,
+    )
+    assert result["tier"] == "haiku"
+    assert result["reason"] == "jev"
+
+
+def test_decide_subsequent_turn_still_blocks_large_context_downgrade():
+    result = decide(
+        prompt="rename x to count",
+        jev={"choice": "haiku", "confidence": 0.95},
+        current="opus",
+        available=["haiku", "sonnet", "opus"],
+        context_tokens=50_000,
+        first_turn=False,
+    )
+    assert result["tier"] == "opus"
+    assert result["reason"] == "downgrade-not-worth-cache-rebuild/no-change"
+
+
+def test_decide_first_turn_higher_or_equal_tier_unchanged():
+    upgraded = decide(
+        prompt="hard task",
+        jev={"choice": "opus", "confidence": 0.9},
+        current="haiku",
+        available=["haiku", "sonnet", "opus"],
+        context_tokens=50_000,
+        first_turn=True,
+    )
+    assert upgraded == {"tier": "opus", "reason": "jev", "changed": True}
+
+    same = decide(
+        prompt="anything",
+        jev={"choice": "opus", "confidence": 0.9},
+        current="opus",
+        available=["haiku", "sonnet", "opus"],
+        context_tokens=50_000,
+        first_turn=True,
+    )
+    assert same == {"tier": "opus", "reason": "jev/no-change", "changed": False}
+
+
 def test_decide_plain_jev_recommendation():
     result = decide(
         prompt="fix this",

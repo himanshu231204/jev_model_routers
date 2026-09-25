@@ -19,7 +19,9 @@ class Tier:
 # substring used to recognise whatever model Claude Code asked for, which may be an older
 # version within the same tier such as `claude-sonnet-4-6`. The capability flags mirror the
 # Agent SDK's model catalogue: Haiku supports neither adaptive thinking nor effort, so those
-# fields have to be stripped when routing down to it.
+# fields have to be stripped when routing down to it. All four ids are verified against
+# Claude Code 2.1.281's shipped model catalog (`claude-haiku-4-5-20251001` is its first-party
+# Haiku 4.5 id; `claude-opus-5`, `claude-sonnet-5`, `claude-fable-5-1` are catalog ids).
 TIERS: list[Tier] = [
     Tier("haiku", "claude-haiku-4-5-20251001", "haiku", thinking=False, effort=False),
     Tier("sonnet", "claude-sonnet-5", "sonnet", thinking=True, effort=True),
@@ -28,6 +30,10 @@ TIERS: list[Tier] = [
 ]
 
 TIER_NAMES: list[str] = [t.name for t in TIERS]
+
+# Tier used for the first turn of a conversation and whenever Jev cannot decide: the safest
+# normal-subscription tier, so a routing failure never hands a task to a weaker model.
+FALLBACK_TIER = "opus"
 
 
 def rank_of(name: str | None) -> int:
@@ -118,21 +124,26 @@ OVERRIDE_PATTERNS: list[tuple[str, re.Pattern]] = [
     for t in TIERS
 ]
 
+# System One model id sent as the request's top-level "model"; the API rejects requests without it.
+JEV_MODEL = "jev-latest"
+
+# Question shapes follow the System One API: every question has `instructions` and `criteria`
+# (a list of levels for `score`, an {option: description} map for `choice`).
 QUESTIONS = {
     "task_complexity": {
         "type": "score",
-        "prompt": "How complex is the coding task overall, including ambiguity, scope, and blast radius?",
-        "scale": _COMPLEXITY_SCALE,
+        "instructions": "How complex is the coding task overall, including ambiguity, scope, and blast radius?",
+        "criteria": _COMPLEXITY_SCALE,
     },
     "reasoning_required": {
         "type": "score",
-        "prompt": "How much reasoning is required to complete the request correctly in one pass?",
-        "scale": _COMPLEXITY_SCALE,
+        "instructions": "How much reasoning is required to complete the request correctly in one pass?",
+        "criteria": _COMPLEXITY_SCALE,
     },
     "tool_complexity": {
         "type": "score",
-        "prompt": "How complex is the tool use required, from no tools to many coordinated or stateful operations?",
-        "scale": _COMPLEXITY_SCALE,
+        "instructions": "How complex is the tool use required, from no tools to many coordinated or stateful operations?",
+        "criteria": _COMPLEXITY_SCALE,
     },
 }
 
@@ -162,19 +173,21 @@ _GUIDANCE = {
 
 def question_for_models(models: list[dict]) -> dict:
     """Build a Jev choice question from the exact models available to this account and CLI."""
-    options = {}
+    criteria = {}
     for m in models:
-        guidance = _GUIDANCE.get(m["tier"], {})
-        options[m["id"]] = {"model": m.get("description") or m["id"], **guidance}
+        g = _GUIDANCE.get(m["tier"])
+        parts = [m.get("description") or m["id"]]
+        if g:
+            parts += [g["what"], f"Signals: {'; '.join(g['signals'])}.", f"Not for: {g['not_for']}"]
+        criteria[m["id"]] = " ".join(parts)
     return {
         "type": "choice",
-        "prompt": [
+        "instructions": (
             "Pick the cheapest exact model that can fully complete this coding request in one "
-            "pass, without retrying on a stronger model.",
-            "Treat different model versions as separate choices. Judge required reasoning, not "
-            "requested reply length.",
-        ],
-        "options": options,
+            "pass, without retrying on a stronger model. Treat different model versions as "
+            "separate choices. Judge required reasoning, not requested reply length."
+        ),
+        "criteria": criteria,
     }
 
 
