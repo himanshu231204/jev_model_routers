@@ -15,14 +15,13 @@
 ## 2. Install
 
 ```bash
-git clone https://github.com/himanshu231204/jev_model_routers.git
-cd jev_model_routers
-pip install -e .
+pip install jev-model-router
 ```
 
 This installs `jev-claude`, `jev-codex` and `jev-explain`. There are no runtime dependencies.
-Optional: `pip install -e ".[typesafe]"` and `JEV_CLIENT=sdk` to call Jev through the official
-TypeSafe SDK instead of the built-in stdlib client.
+For the latest development version: `pip install git+https://github.com/himanshu231204/jev_model_routers`.
+Optional: `pip install "jev-model-router[typesafe]"` and `JEV_CLIENT=sdk` to call Jev through the
+official TypeSafe SDK instead of the built-in stdlib client.
 
 ## 3. Add your key
 

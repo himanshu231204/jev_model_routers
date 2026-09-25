@@ -28,7 +28,9 @@ policy → request rewritten to that model → Anthropic → streamed back uncha
 
 ## Commands
 
-- Python **>= 3.11**, `src/` layout, setuptools, distribution name `jev-router`.
+- Python **>= 3.11**, `src/` layout, setuptools. Published to PyPI as **`jev-model-router`**;
+  the version lives only in `src/jev_router_live/version.py`. Releases are cut by pushing a
+  `v*` tag — follow `RELEASE.md` (bump version + `CHANGELOG.md` section, then tag).
 - **Zero runtime dependencies (`dependencies = []`), stdlib only.** `pytest` is the `test`
   extra; `typesafe-sdk` is the optional `typesafe` extra used only with `JEV_CLIENT=sdk`.
 - Install: `pip install -e ".[test]"` → console scripts `jev-claude`, `jev-codex`,
