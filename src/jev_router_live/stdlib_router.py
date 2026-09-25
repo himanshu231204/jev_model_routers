@@ -1,8 +1,7 @@
 """Stdlib HTTP path for the live proxy: asks Jev which exact model fits a prompt.
 
 Talks to the System One HTTP API directly with stdlib ``urllib`` (zero runtime
-deps), the same approach ``jev_router.jev.client`` already uses elsewhere in
-this repository.
+deps).
 """
 from __future__ import annotations
 

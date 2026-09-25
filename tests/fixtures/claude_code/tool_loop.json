@@ -1,1 +1,0 @@
-{"session_id": "sess_1", "messages": [{"role": "user", "content": "x"}, {"role": "assistant", "tool_calls": ["read"]}], "model": "claude-sonnet", "tool_result": true}

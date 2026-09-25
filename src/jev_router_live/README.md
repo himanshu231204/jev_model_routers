@@ -2,11 +2,9 @@
 
 Per-turn live model routing for Claude Code and OpenAI Codex.
 
-`jev_router` (the rest of this repository) makes one routing decision at session start. This
-package takes a different approach: a local HTTP proxy sits in front of the agent CLI's own
-API and rewrites **every fresh user turn** to the cheapest model tier that can do the work,
-via TypeSafe's Jev (System One) API — while the agent's own picker, tools, permissions, and
-session handling are untouched.
+A local HTTP proxy sits in front of the agent CLI's own API and rewrites **every fresh user
+turn** to the cheapest model tier that can do the work, via TypeSafe's Jev (System One) API —
+while the agent's own picker, tools, permissions, and session handling are untouched.
 
 ## Install
 
@@ -118,5 +116,4 @@ shells out to `python3 -m jev_router_live.bin.jev_explain "$CLAUDE_SESSION_ID"`)
 checked into this repository because `.claude/` is gitignored here; copy it into your own
 project's `.claude/skills/` if you want the slash command.
 
-See `ARCHITECTURE.md` §16 for the full design of this package, including how it fits
-alongside `jev_router`'s session-start routing.
+See `ARCHITECTURE.md` at the repository root for the full design.

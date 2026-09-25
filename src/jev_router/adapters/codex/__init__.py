@@ -1,1 +1,0 @@
-"""OpenAI Codex adapter package."""
