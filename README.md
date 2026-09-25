@@ -225,7 +225,7 @@ Harmless — it's Claude Code noting the extra "JEV Router" entry. Requests are 
 ## 📍 Project status
 
 **Beta.** Verified end to end against Claude Code 2.1.282 (interactive and `-p`): the picker entry,
-per-turn routing, tool-loop pinning, manual override, fail-open and streaming, with 105 automated
+per-turn routing, tool-loop pinning, manual override, fail-open and streaming, with 106 automated
 tests on Python 3.11 and 3.12. OpenAI Codex support (`jev-codex`) is experimental. Known
 limitations are listed in [`ARCHITECTURE.md`](https://github.com/himanshu231204/jev_model_routers/blob/main/ARCHITECTURE.md#15-known-limitations).
 
