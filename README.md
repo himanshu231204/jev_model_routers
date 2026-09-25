@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/himanshu231204/jev_model_routers/actions/workflows/ci.yml"><img src="https://github.com/himanshu231204/jev_model_routers/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://pypi.org/project/jev-model-router/"><img src="https://img.shields.io/pypi/v/jev-model-router?color=d97757" alt="PyPI"></a>
+  <a href="https://pypi.org/project/jev-model-router/"><img src="https://img.shields.io/pypi/v/jev-model-router?label=PyPI&logo=pypi&logoColor=white&color=d97757" alt="PyPI"></a>
   <a href="https://github.com/himanshu231204/jev_model_routers/pkgs/container/jev_model_routers"><img src="https://img.shields.io/badge/ghcr.io-jev--model--router-2496ED?logo=docker&logoColor=white" alt="Docker image on GHCR"></a>
   <a href="https://github.com/himanshu231204/jev_model_routers/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue" alt="Python 3.11 | 3.12">
