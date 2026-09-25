@@ -137,7 +137,11 @@ choice into the main conversation.
 `policy.decide()` is pure and total: given Jev's answer (mapped from exact model id to tier),
 the pinned tier and the tiers the account can run, it returns the final tier and a reason.
 
-1. **Prompt override** — "use opus", "switch to fast", … beats everything (`override`).
+1. **Prompt override** — "use opus", "switch to fast mode", … beats everything (`override`).
+   Tier names always count; the aliases (fast/balanced/strong/long, luna/terra/sol/astra) only
+   when followed by "mode"/"model"/"tier" or ending the clause, so "with long filenames" or
+   "use fast lookups" is left to Jev.
+   A malformed Jev confidence (null, non-numeric, NaN) is treated as low confidence.
 2. **No usable answer** (failure, malformed, a model that was not offered) — keep the current
    tier (`jev-unavailable`).
 3. **Low confidence** (below `THRESHOLDS.min_confidence`, 0.3) — never downgrade; cap upgrades

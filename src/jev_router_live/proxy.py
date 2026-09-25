@@ -215,7 +215,7 @@ class _ConvoState:
 
 
 class _Convos:
-    """Bounded LRU-ish map of conversation key -> routing state, plus the model most recently
+    """Bounded LRU map of conversation key -> routing state, plus the model most recently
     routed in each session (used for auxiliary calls that belong to no routed conversation)."""
 
     def __init__(self, limit: int = 50) -> None:
@@ -226,11 +226,14 @@ class _Convos:
 
     def get(self, key: str) -> _ConvoState:
         with self._lock:
-            state = self._data.get(key)
+            # Re-insert on every hit so eviction drops the least recently used conversation,
+            # not the oldest one: a long main conversation outlives many short sub-agents.
+            state = self._data.pop(key, None)
             if state is None:
-                if len(self._data) > self._limit:
+                state = _ConvoState()
+                if len(self._data) >= self._limit:
                     self._data.pop(next(iter(self._data)))
-                state = self._data[key] = _ConvoState()
+            self._data[key] = state
             return state
 
     def remember_session_model(self, session: str, model: str) -> None:

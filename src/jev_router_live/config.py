@@ -111,16 +111,29 @@ _COMPLEXITY_SCALE = [
 
 COMPLEXITY_MAX_SCORE = len(_COMPLEXITY_SCALE) - 1
 
-_OVERRIDE_WORDS = {
-    "haiku": "haiku|fast|luna",
-    "sonnet": "sonnet|balanced|terra",
-    "opus": "opus|strong|sol",
-    "fable": "fable|long|astra",
+# Other words for each tier, accepted in prompt overrides next to the tier's own name.
+_OVERRIDE_ALIASES = {
+    "haiku": "fast|luna",
+    "sonnet": "balanced|terra",
+    "opus": "strong|sol",
+    "fable": "long|astra",
 }
+
+# Model names are unambiguous on their own ("use opus"). The aliases are also ordinary English
+# in coding prompts ("with long filenames", "use fast lookups"), so they only count when named
+# as a mode/model/tier ("switch to fast mode") or when they end the clause ("switch to fast.").
+_OVERRIDE_ALIAS_END = r"(?=\s+(?:mode|model|tier)\b|\s*(?:[.,;:!?)]|$))"
 
 # Phrases that mean "the human already decided", checked against the raw prompt.
 OVERRIDE_PATTERNS: list[tuple[str, re.Pattern]] = [
-    (t.name, re.compile(rf"\b(?:use|switch to|with|on)\s+(?:{_OVERRIDE_WORDS[t.name]})\b", re.I))
+    (
+        t.name,
+        re.compile(
+            rf"\b(?:use|switch to|with|on)\s+"
+            rf"(?:{t.name}\b|(?:{_OVERRIDE_ALIASES[t.name]}){_OVERRIDE_ALIAS_END})",
+            re.I,
+        ),
+    )
     for t in TIERS
 ]
 
