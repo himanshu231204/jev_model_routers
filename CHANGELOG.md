@@ -21,6 +21,11 @@ adheres to [Semantic Versioning](https://semver.org/). Releases are published to
   low confidence, so it can never downgrade.
 - The proxy's conversation map now evicts the least recently used conversation instead of the
   oldest, so a long main conversation keeps its pinned model after many sub-agents.
+- `JEV_CLIENT=sdk` now follows `typesafe-sdk`'s real API and the router's limits: per-request
+  timeout 1.5 s (was the SDK's 10 s default), the 3 s wall-clock deadline, one retry for
+  5xx/timeouts only (no 408/429 or `Retry-After` sleeps), typed `Score`/`Choice` questions, the
+  real complexity scores and raw response instead of placeholders, `JEV_ENDPOINT` support, and
+  no crash when the response lacks an `x-typesafe-request-id` header.
 
 ## [0.1.0] - 2026-09-25
 

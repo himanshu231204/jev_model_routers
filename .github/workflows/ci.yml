@@ -22,7 +22,7 @@ jobs:
           cache: pip
 
       - name: Install package
-        run: pip install -e ".[test]"
+        run: pip install -e ".[test,typesafe]"
 
       - name: Run tests
         run: python -m pytest

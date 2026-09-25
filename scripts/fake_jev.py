@@ -16,8 +16,20 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 REQUIRED_QUESTIONS = {"task_complexity", "reasoning_required", "tool_complexity", "model"}
 
 
-def _score(value: float) -> dict:
-    return {"type": "score", "score": value, "confidence": 0.9}
+def _score(value: float, levels: list) -> dict:
+    """A score answer with every field the real API returns (`typesafe-sdk` validates them)."""
+    low = min(int(value), len(levels) - 1)
+    high = min(low + 1, len(levels) - 1)
+    probabilities = {str(i): 0.0 for i in range(len(levels))}
+    probabilities[str(high)] += value - low
+    probabilities[str(low)] += 1 - (value - low)
+    return {
+        "type": "score",
+        "score": value,
+        "confidence": 0.9,
+        "legend": {str(i): level for i, level in enumerate(levels)},
+        "probabilities": probabilities,
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -41,14 +53,17 @@ class Handler(BaseHTTPRequestHandler):
         prompt = body["state"]["request"]
         pick = offered[0] if "RENAME" in prompt else offered[-1] if "ARCHITECT" in prompt else offered[len(offered) // 2]
         print(f"[fake-jev] request ok: {len(offered)} models offered -> {pick}", flush=True)
+        questions = body["questions"]
+        probabilities = {m: (0.97 if m == pick else 0.03 / max(len(offered) - 1, 1)) for m in offered}
         self._send(200, {
             "model": "jev-fake",
             "answers": {
-                "task_complexity": _score(1.0),
-                "reasoning_required": _score(1.5),
-                "tool_complexity": _score(1.0),
-                "model": {"type": "choice", "choice": pick, "confidence": 0.97, "probabilities": {pick: 0.97}},
+                "task_complexity": _score(1.0, questions["task_complexity"]["criteria"]),
+                "reasoning_required": _score(1.5, questions["reasoning_required"]["criteria"]),
+                "tool_complexity": _score(1.0, questions["tool_complexity"]["criteria"]),
+                "model": {"type": "choice", "choice": pick, "confidence": 0.97, "probabilities": probabilities},
             },
+            "usage": {"input_tokens": len(json.dumps(body)) // 4, "output_tokens": 40},
         })
 
     def _send(self, status, payload):

@@ -16,8 +16,8 @@ policy → request rewritten to that model → Anthropic → streamed back uncha
   listed in `pyproject.toml` `[tool.setuptools.package-data]` (today: the Codex
   `skills/codex/jev-explain/SKILL.md`). Anything at the repo root is not installed.
 - **Tests:** `tests/live/` (unit + proxy-integration, Jev mocked) and
-  `tests/live/test_live_jev_api.py` (real Jev, opt-in). `python -m pytest` passes (97 tests,
-  3 skipped live-API tests, as of this writing). CI (`.github/workflows/ci.yml`) runs pytest on
+  `tests/live/test_live_jev_api.py` (real Jev, opt-in). `python -m pytest` passes (105 tests,
+  3 skipped live-API tests, as of this writing). CI (`.github/workflows/ci.yml`) installs the `typesafe` extra and runs pytest on
   Python 3.11 and 3.12 for every PR. There is no linter, formatter, type-checker or lockfile;
   don't invent tool commands.
 - **Verified against real Claude Code 2.1.282** (`jev-claude`, interactive and `-p`), with Jev
@@ -38,7 +38,7 @@ policy → request rewritten to that model → Anthropic → streamed back uncha
   extra; `typesafe-sdk` is the optional `typesafe` extra used only with `JEV_CLIENT=sdk`.
 - Install: `pip install -e ".[test]"` → console scripts `jev-claude`, `jev-codex`,
   `jev-explain`.
-- All tests: `python -m pytest -q`; one test: `python -m pytest tests/live/test_live_policy.py::name`.
+- All tests: `python -m pytest -q` (install `.[test,typesafe]` so the SDK-client tests run too); one test: `python -m pytest tests/live/test_live_policy.py::name`.
 - Real Jev: `JEV_LIVE_TESTS=1 TYPESAFE_API_KEY=… python -m pytest tests/live/test_live_jev_api.py -s`.
 - Real Claude Code without Jev access: `python scripts/fake_jev.py 8765`, then
   `JEV_ENDPOINT=http://127.0.0.1:8765/v1/systemone TYPESAFE_API_KEY=local jev-claude -p "…"`.

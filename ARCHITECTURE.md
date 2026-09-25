@@ -190,7 +190,12 @@ questions barely change latency).
 Latency budget (interactive hot path): 1.5 s per attempt, at most one retry — only for
 timeouts, network errors and 5xx, never 4xx — and a hard 3 s wall-clock deadline enforced
 outside the socket timeouts. Measured ~0.3 s warm, ~1 s cold. `JEV_CLIENT=sdk` uses the official
-`typesafe-sdk` with the same key and limits.
+`typesafe-sdk` (typed `Score`/`Choice` questions, `TypeSafeClient.system_one`) with the same key,
+questions and limits: the SDK's per-request `timeout` is set to 1.5 s (its default is 10 s), its
+`RetryPolicy` retries once with no backoff and only 5xx/timeouts/connection errors (its defaults
+also retry 408/429 and honor `Retry-After`), and the call runs under the same 3 s wall-clock
+deadline. It returns the same dict as the stdlib client, including the three scores and the raw
+response. `JEV_ENDPOINT` points either client at another System One URL.
 
 ---
 
