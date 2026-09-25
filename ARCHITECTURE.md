@@ -67,7 +67,8 @@ src/jev_router_live/
 ├── settings.py       # restore Claude Code's saved default model on exit
 ├── log.py            # decision log / debug tracing
 ├── env_file.py       # .env loading for TYPESAFE_API_KEY
-└── bin/              # jev_claude, jev_codex, jev_statusline, jev_explain
+├── bin/              # jev_claude, jev_codex, jev_statusline, jev_explain
+└── skills/           # Codex $jev-explain skill (package data)
 ```
 
 Boundaries: the Jev client knows nothing about Claude Code; `policy.py` knows nothing about

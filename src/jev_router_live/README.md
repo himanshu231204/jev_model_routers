@@ -107,9 +107,10 @@ System One stand-in: `python scripts/fake_jev.py 8765`, then
 | `env_file.py` | Minimal `.env` loader shared by both launchers |
 | `bin/jev_claude.py`, `bin/jev_codex.py`, `bin/jev_statusline.py`, `bin/jev_explain.py` | the four CLI entry points |
 
-`skills/codex/jev-explain/SKILL.md` is the `$jev-explain` skill for Codex, installed
-automatically into `~/.agents/skills/jev-router-explain/SKILL.md` by `jev-codex` on launch
-(see `install_codex_skill` in `bin/jev_codex.py`). It invokes `jev-explain` directly.
+`skills/codex/jev-explain/SKILL.md` (inside this package, shipped as package data so it exists
+in every install) is the `$jev-explain` skill for Codex, installed automatically into
+`~/.agents/skills/jev-router-explain/SKILL.md` by `jev-codex` on launch (see
+`install_codex_skill` in `bin/jev_codex.py`). It invokes `jev-explain` directly.
 
 The Claude Code equivalent (`/jev-explain`, a `.claude/skills/jev-explain/SKILL.md` that
 shells out to `python3 -m jev_router_live.bin.jev_explain "$CLAUDE_SESSION_ID"`) is not

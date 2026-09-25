@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+from importlib import resources
 from pathlib import Path
 
 from jev_router_live.codex_proxy import CODEX_AUTO_MODEL, start_codex_proxy
@@ -13,8 +14,9 @@ from jev_router_live.config import api_key, missing_key_notice
 from jev_router_live.env_file import load_env
 
 PROVIDER = "jev"
-ROOT = Path(__file__).resolve().parent.parent.parent.parent
-EXPLAIN_SKILL = ROOT / "skills" / "codex" / "jev-explain" / "SKILL.md"
+# Shipped inside the package (not at the repo root) so it exists in every install, not only
+# in a source checkout.
+EXPLAIN_SKILL = resources.files("jev_router_live") / "skills" / "codex" / "jev-explain" / "SKILL.md"
 
 
 def install_codex_skill(home: Path | None = None) -> Path:

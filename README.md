@@ -177,7 +177,8 @@ src/jev_router_live/
 ├── explain.py        # explanation report
 ├── settings.py       # restores Claude Code's saved default model on exit
 ├── log.py, env_file.py
-└── bin/              # jev-claude, jev-codex, jev-statusline, jev-explain
+├── bin/              # jev-claude, jev-codex, jev-statusline, jev-explain
+└── skills/           # Codex $jev-explain skill, copied into ~/.agents/skills by jev-codex
 tests/live/           # unit + proxy integration tests, opt-in real-Jev test
 scripts/fake_jev.py   # local System One stand-in for end-to-end runs
 ```
