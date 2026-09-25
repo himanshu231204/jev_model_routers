@@ -30,10 +30,10 @@ justifying.
 ### 3. Set a Jev key (optional, for live routing)
 
 Tests mock Jev by default, so this isn't required to run the test suite. It is required to
-actually exercise routing (a TypeSafe key; `JEV_API_KEY` is the only variable read):
+actually exercise routing (a TypeSafe key; `TYPESAFE_API_KEY` is the only variable read):
 
 ```bash
-export JEV_API_KEY="your_typesafe_key"   # PowerShell: $env:JEV_API_KEY="..."
+export TYPESAFE_API_KEY="your_typesafe_key"   # PowerShell: $env:TYPESAFE_API_KEY="..."
 ```
 
 ### 4. Run the Tests
@@ -83,14 +83,14 @@ per turn, explicit-choice-always-wins and fail-open) and `ARCHITECTURE.md`.
 
 - Match the existing terse, low-comment style — comments explain *why*, not *what*.
 - Routing thresholds and model ids belong in `config.py`, not scattered through the code.
-- `JEV_API_KEY` is read only by the Jev client; never log prompts, keys or auth headers. The
+- `TYPESAFE_API_KEY` is read only by the Jev client; never log prompts, keys or auth headers. The
   decision log (`log.record`) takes safe metadata only.
 
 ### Testing
 
 - pytest only (`pyproject.toml` sets `testpaths = ["tests"]`); tests live in `tests/live/`.
 - Mock Jev in all default tests. The real-API test is opt-in via `JEV_LIVE_TESTS=1` plus a real
-  `JEV_API_KEY` — never commit a real key in a fixture.
+  `TYPESAFE_API_KEY` — never commit a real key in a fixture.
 - Proxy tests run against a local fake Anthropic upstream; when Claude Code's request shapes
   change, model the test on captured real traffic and note the Claude Code version.
 - Any non-trivial change to policy, turn detection, pinning, catalog, rewriting, streaming,

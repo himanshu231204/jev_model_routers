@@ -3,7 +3,7 @@
 Skipped unless both are set:
 
     JEV_LIVE_TESTS=1
-    JEV_API_KEY=<a real key>
+    TYPESAFE_API_KEY=<a real key>
 
 Run:  JEV_LIVE_TESTS=1 python -m pytest tests/live/test_live_jev_api.py -s -q
 
@@ -22,8 +22,8 @@ from jev_router_live.policy import decide
 from jev_router_live.stdlib_router import stdlib_ask_jev
 
 pytestmark = pytest.mark.skipif(
-    not (os.environ.get("JEV_LIVE_TESTS") == "1" and os.environ.get("JEV_API_KEY")),
-    reason="live JEV test: set JEV_LIVE_TESTS=1 and JEV_API_KEY",
+    not (os.environ.get("JEV_LIVE_TESTS") == "1" and os.environ.get("TYPESAFE_API_KEY")),
+    reason="live JEV test: set JEV_LIVE_TESTS=1 and TYPESAFE_API_KEY",
 )
 
 MODELS = [{"id": t.id, "tier": t.name, "description": t.id} for t in TIERS if t.name in available_tiers()]

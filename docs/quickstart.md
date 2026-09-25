@@ -26,14 +26,14 @@ TypeSafe SDK instead of the built-in stdlib client.
 
 ## 3. Add your key
 
-`JEV_API_KEY` is the only variable the router reads. Put it in a file so every terminal has it:
+`TYPESAFE_API_KEY` is the only variable the router reads. Put it in a file so every terminal has it:
 
 ```bash
 # Linux / macOS
-echo "JEV_API_KEY=your_typesafe_key" > ~/.jev-router.env
+echo "TYPESAFE_API_KEY=your_typesafe_key" > ~/.jev-router.env
 
 # Windows PowerShell
-Set-Content "$HOME\.jev-router.env" "JEV_API_KEY=your_typesafe_key"
+Set-Content "$HOME\.jev-router.env" "TYPESAFE_API_KEY=your_typesafe_key"
 ```
 
 It is also read from the environment, `./.env` or `~/.jev-claude.env`. It is sent only to
@@ -91,7 +91,7 @@ $ tail ~/.jev-claude.log
 
 | Variable | Effect |
 | --- | --- |
-| `JEV_API_KEY` | Required for routing. |
+| `TYPESAFE_API_KEY` | Required for routing. |
 | `JEV_ALLOW_FABLE=1` | Also offer Fable (bills extra usage credits). |
 | `JEV_NO_STATUSLINE=1` | Don't add the routing status line. If you already have your own status line, it is kept either way. |
 | `JEV_DEBUG=1` | Request-level tracing in the log, including the first 60 characters of each routed prompt. |
@@ -105,7 +105,8 @@ Thresholds (confidence floor, cache-protection size, Jev timeouts) are in
 
 | Problem | What to check |
 |---|---|
-| `[jev] no JEV_API_KEY found` | Add the key (step 3). |
+| `[jev] no TYPESAFE_API_KEY found` | Add the key (step 3). |
+| `[jev] JEV_API_KEY is no longer read - rename it to TYPESAFE_API_KEY` | Earlier versions used `JEV_API_KEY`; rename it in `~/.jev-router.env` (or your environment). |
 | Every turn says `reason=jev-unavailable` | The log line above it has the cause (network, HTTP 401 for a bad key, timeout). Claude Code keeps working meanwhile. |
 | `[claude-code:unrecognized_model] {"model":"jev-router"}` at startup | Harmless one-line warning from Claude Code; requests are still routed. |
 | Status line shows `⏸ manual` | You picked a model in `/model`; pick JEV Router to resume routing. |

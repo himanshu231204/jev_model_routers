@@ -9,7 +9,8 @@ def sdk_ask_jev(*, prompt, current, context_tokens, models):
     except ImportError:
         log("JEV_CLIENT=sdk but typesafe_sdk is not installed (pip install jev-router[typesafe]); not routing")
         return None
-    key = os.environ.get("JEV_API_KEY")
+    from jev_router_live.config import api_key
+    key = api_key()
     if not key or not models:
         return None
     logging.getLogger("typesafe_sdk").setLevel(logging.WARNING)

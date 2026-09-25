@@ -66,7 +66,7 @@ src/jev_router_live/
 ├── explain.py        # jev-explain report
 ├── settings.py       # restore Claude Code's saved default model on exit
 ├── log.py            # decision log / debug tracing
-├── env_file.py       # .env loading for JEV_API_KEY
+├── env_file.py       # .env loading for TYPESAFE_API_KEY
 └── bin/              # jev_claude, jev_codex, jev_statusline, jev_explain
 ```
 
@@ -158,7 +158,7 @@ only gates *downgrades and large upgrades*, and should be tuned against real Jev
 ## 7. The Jev Call
 
 One `POST https://api.typesafe.ai/v1/systemone` per fresh turn, `Authorization: Bearer
-$JEV_API_KEY`, matching TypeSafe's documented request/response shapes:
+$TYPESAFE_API_KEY`, matching TypeSafe's documented request/response shapes:
 
 ```json
 {
@@ -222,7 +222,7 @@ the provider.
 
 | Failure | Behavior |
 |---|---|
-| `JEV_API_KEY` unset | `jev-claude` starts plain Claude Code: no proxy, no picker row |
+| `TYPESAFE_API_KEY` unset | `jev-claude` starts plain Claude Code: no proxy, no picker row |
 | Jev timeout / network error / 5xx | one retry within the 3 s deadline, then keep the current tier (first turn: Opus) |
 | Jev 4xx (bad key, bad request) | no retry; keep the current tier |
 | Malformed answer, or a model that was not offered | treated as no answer |
@@ -253,10 +253,13 @@ to the log file, never printed over the TUI.
 
 ## 12. Security and Observability
 
-- **Credentials.** Exactly one Jev credential, `JEV_API_KEY` (environment, `./.env`,
-  `~/.jev-router.env`, `~/.jev-claude.env`); `TYPESAFE_API_KEY` is ignored (a test enforces that
-  no module references it). Anthropic credentials are Claude Code's own and pass through
-  untouched; the proxy reuses them only to read `/v1/models`. The proxy binds to `127.0.0.1`.
+- **Credentials.** Exactly one Jev credential, `TYPESAFE_API_KEY` — the name TypeSafe's docs
+  and official SDK use (environment, `./.env`, `~/.jev-router.env`, `~/.jev-claude.env`). The
+  variable name is defined only in `config.py` (a test enforces that no other module reads a
+  key). The earlier name `JEV_API_KEY` is not read; if it is set without `TYPESAFE_API_KEY`, the
+  launchers print a one-line notice to rename it (never its value). Anthropic credentials are
+  Claude Code's own and pass through untouched; the proxy reuses them only to read
+  `/v1/models`. The proxy binds to `127.0.0.1`.
 - **Decision log** (`~/.jev-claude.log`, always on, file only — never stderr, so it cannot
   corrupt the TUI or `-p` output): one line of safe metadata per routed turn, e.g.
   `turn=a6ba87d7ab94 decision=opus model=claude-opus-5-5 confidence=0.97 latency=412ms reason=jev
@@ -286,7 +289,7 @@ has not had the real-session verification Claude Code has had (§14).
 | Layer | What | How |
 |---|---|---|
 | Unit / integration | policy, Jev client, proxy against a fake Anthropic upstream: turn detection, pinning, catalog, streaming, failures, security | `python -m pytest` (Jev mocked; runs in CI) |
-| Real Jev API | trivial / medium / hard prompts produce valid decisions | `JEV_LIVE_TESTS=1 JEV_API_KEY=… python -m pytest tests/live/test_live_jev_api.py -s` |
+| Real Jev API | trivial / medium / hard prompts produce valid decisions | `JEV_LIVE_TESTS=1 TYPESAFE_API_KEY=… python -m pytest tests/live/test_live_jev_api.py -s` |
 | Real Claude Code | `jev-claude` end to end: picker, routed turns, tool-loop pinning, manual override, fail-open | `jev-claude` (optionally with `JEV_ENDPOINT` pointed at `scripts/fake_jev.py`) |
 
 ---

@@ -31,9 +31,9 @@ policy → request rewritten to that model → Anthropic → streamed back uncha
 - Install: `pip install -e ".[test]"` → console scripts `jev-claude`, `jev-codex`,
   `jev-explain`.
 - All tests: `python -m pytest -q`; one test: `python -m pytest tests/live/test_live_policy.py::name`.
-- Real Jev: `JEV_LIVE_TESTS=1 JEV_API_KEY=… python -m pytest tests/live/test_live_jev_api.py -s`.
+- Real Jev: `JEV_LIVE_TESTS=1 TYPESAFE_API_KEY=… python -m pytest tests/live/test_live_jev_api.py -s`.
 - Real Claude Code without Jev access: `python scripts/fake_jev.py 8765`, then
-  `JEV_ENDPOINT=http://127.0.0.1:8765/v1/systemone JEV_API_KEY=local jev-claude -p "…"`.
+  `JEV_ENDPOINT=http://127.0.0.1:8765/v1/systemone TYPESAFE_API_KEY=local jev-claude -p "…"`.
 
 ## Module boundaries
 
@@ -51,8 +51,10 @@ policy → request rewritten to that model → Anthropic → streamed back uncha
 
 ## Routing invariants (must not regress)
 
-- **Auth is `JEV_API_KEY` only.** `TYPESAFE_API_KEY` must never appear in
-  `src/jev_router_live/` (a test enforces it). Never hard-code, commit, print or log the key.
+- **Auth is `TYPESAFE_API_KEY` only** (TypeSafe's documented name), read via
+  `config.api_key()`. Credential variable names appear only in `config.py` (a test enforces
+  it). The old name `JEV_API_KEY` is never read — only detected to tell the user to rename it.
+  Never hard-code, commit, print or log the key.
 - **Jev is called once per fresh user turn.** Tool continuations, resent copies of the same
   turn (same prompt + same conversation length; Claude Code 2.1.282 sends a turn's first
   request twice), `[SUGGESTION MODE:` prompt-suggestion requests and auxiliary calls never call

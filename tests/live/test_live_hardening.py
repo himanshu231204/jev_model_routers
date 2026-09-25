@@ -418,7 +418,7 @@ def test_client_disconnect_is_quiet_but_other_errors_are_logged(monkeypatch):
 def test_decision_log_has_safe_metadata_only(world, monkeypatch):
     recorded: list[str] = []
     monkeypatch.setattr(proxy_mod, "record", recorded.append)
-    monkeypatch.setenv("JEV_API_KEY", "secret-key-value")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "secret-key-value")
     _, handle = world(Route(choice="claude-sonnet-5", confidence=0.99))
 
     _post(handle.port, _turn("my private prompt text"), headers={"Authorization": "Bearer oauth-secret"})
@@ -473,7 +473,7 @@ def test_statusline_settings_file_is_private_unique_and_cleaned_up(launched, mon
     monkeypatch.delenv("JEV_NO_STATUSLINE")
     monkeypatch.setattr(jev_claude.Path, "cwd", lambda: jev_claude.Path("/nonexistent"))
     monkeypatch.setattr(jev_claude.Path, "home", lambda: jev_claude.Path("/nonexistent"))
-    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "k")
     captured = {}
     real_run = jev_claude.subprocess.run
 
@@ -505,7 +505,7 @@ def test_jev_client_retries_only_retryable_failures(monkeypatch, status, expecte
         calls.append(1)
         raise urllib.error.HTTPError("u", status, "err", {}, None)
 
-    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "k")
     monkeypatch.setattr(stdlib_router, "_post", fail)
     models = [{"id": "claude-sonnet-5", "tier": "sonnet"}]
     assert stdlib_router.stdlib_ask_jev(prompt="x", current="c", context_tokens=0, models=models) is None
@@ -586,7 +586,7 @@ def launched(monkeypatch, tmp_path):
 
 
 def test_launcher_with_key_starts_proxy_and_picker(launched, monkeypatch):
-    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "k")
     seen = launched()
     env = seen["env"]
     assert env["ANTHROPIC_BASE_URL"].startswith("http://127.0.0.1:")
@@ -597,17 +597,27 @@ def test_launcher_with_key_starts_proxy_and_picker(launched, monkeypatch):
     assert seen["code"] == 0
 
 
-def test_launcher_without_jev_api_key_runs_plain_claude(launched, monkeypatch):
-    monkeypatch.delenv("JEV_API_KEY", raising=False)
-    monkeypatch.setenv("TYPESAFE_API_KEY", "legacy")  # must not enable routing
+def test_launcher_without_typesafe_api_key_runs_plain_claude(launched, monkeypatch, capsys):
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setenv("JEV_API_KEY", "legacy")  # old name: must not enable routing
     monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
     env = launched()["env"]
     assert env["ANTHROPIC_BASE_URL"] == "https://api.anthropic.com"
     assert "ANTHROPIC_CUSTOM_MODEL_OPTION" not in env
     assert env.get("ANTHROPIC_MODEL") != AUTO_MODEL
+    notice = capsys.readouterr().err
+    assert "JEV_API_KEY is no longer read" in notice and "TYPESAFE_API_KEY" in notice
+    assert "legacy" not in notice  # the value itself is never echoed
+
+
+def test_launcher_without_any_key_explains_how_to_enable(launched, monkeypatch, capsys):
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+    launched()
+    assert "no TYPESAFE_API_KEY found" in capsys.readouterr().err
 
 
 def test_launcher_respects_users_own_model_choice(launched, monkeypatch):
-    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "k")
     monkeypatch.setenv("ANTHROPIC_MODEL", "claude-opus-5-5")
     assert launched()["env"]["ANTHROPIC_MODEL"] == "claude-opus-5-5"

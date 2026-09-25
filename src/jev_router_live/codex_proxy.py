@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 from urllib.parse import urlparse
 
-from jev_router_live.config import available_tiers, should_use_exact_model
+from jev_router_live.config import API_KEY_ENV, available_tiers, should_use_exact_model
 from jev_router_live.log import debug
 from jev_router_live.policy import decide
 from jev_router_live.proxy import ProxyHandle
@@ -174,7 +174,7 @@ def jev_decision_events(tier: str, model: str | None, confidence: float | None, 
     detail = reason if confidence is None else f"{reason}, confidence {confidence:.2f}"
     event_id = f"jev-{uuid.uuid4()}"
     if reason.startswith("jev-unavailable"):
-        text = f"[Jev] unavailable; using {model}. Add JEV_API_KEY=... to ~/.jev-router.env and restart jev-codex."
+        text = f"[Jev] unavailable; using {model}. Add {API_KEY_ENV}=... to ~/.jev-router.env and restart jev-codex."
     else:
         text = f"[Jev] routed this turn to {model} ({detail})."
     item = {"type": "message", "role": "assistant", "id": event_id, "phase": "commentary", "content": [{"type": "output_text", "text": text}]}
