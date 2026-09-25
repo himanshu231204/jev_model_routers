@@ -10,7 +10,7 @@ while the agent's own picker, tools, permissions, and session handling are untou
 
 ```bash
 pip install -e .
-echo "JEV_API_KEY=..." > ~/.jev-router.env
+echo "TYPESAFE_API_KEY=..." > ~/.jev-router.env
 ```
 
 ## Use
@@ -22,7 +22,7 @@ jev-explain <session-id>  # shows why the last turn was routed the way it was
 ```
 
 Both commands launch the real upstream CLI (`claude` / `codex` must already be installed and
-logged in) and only choose the model for each fresh turn. `JEV_API_KEY` is the only credential
+logged in) and only choose the model for each fresh turn. `TYPESAFE_API_KEY` is the only credential
 read; without it `jev-claude` starts plain Claude Code with no proxy.
 
 In Claude Code, `/model` shows an extra **JEV Router** row, selected by default for the
@@ -31,7 +31,7 @@ JEV Router again to turn it back on.
 
 | Variable | Effect |
 | --- | --- |
-| `JEV_API_KEY` | TypeSafe key for Jev. Required for routing. |
+| `TYPESAFE_API_KEY` | TypeSafe key for Jev. Required for routing. |
 | `JEV_ALLOW_FABLE=1` | Also offer Fable (bills extra usage credits). |
 | `JEV_NO_STATUSLINE=1` | Don't install the routing status line (yours is never overridden anyway). |
 | `JEV_DEBUG=1` | Add request-level tracing, including the first 60 characters of each routed prompt. |
@@ -55,13 +55,13 @@ JEV Router again to turn it back on.
 
 ```bash
 python -m pytest -q                                   # everything, Jev mocked
-JEV_LIVE_TESTS=1 JEV_API_KEY=... \
+JEV_LIVE_TESTS=1 TYPESAFE_API_KEY=... \
   python -m pytest tests/live/test_live_jev_api.py -s # real Jev: trivial/medium/hard
 ```
 
 For a real Claude Code run without network access to Jev, `scripts/fake_jev.py` is a local
 System One stand-in: `python scripts/fake_jev.py 8765`, then
-`JEV_ENDPOINT=http://127.0.0.1:8765/v1/systemone JEV_API_KEY=local jev-claude -p "…"`.
+`JEV_ENDPOINT=http://127.0.0.1:8765/v1/systemone TYPESAFE_API_KEY=local jev-claude -p "…"`.
 
 ## Known behavior (Claude Code)
 

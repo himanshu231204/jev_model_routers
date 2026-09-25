@@ -5,7 +5,7 @@ prompts containing "RENAME" pick the cheapest offered model, "ARCHITECT" the str
 anything else the middle one. It is NOT a substitute for the live test against the real API.
 
     python scripts/fake_jev.py 8765
-    JEV_ENDPOINT=http://127.0.0.1:8765/v1/systemone JEV_API_KEY=local jev-claude ...
+    JEV_ENDPOINT=http://127.0.0.1:8765/v1/systemone TYPESAFE_API_KEY=local jev-claude ...
 """
 from __future__ import annotations
 

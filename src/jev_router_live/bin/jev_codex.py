@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from jev_router_live.codex_proxy import CODEX_AUTO_MODEL, start_codex_proxy
+from jev_router_live.config import api_key, missing_key_notice
 from jev_router_live.env_file import load_env
 
 PROVIDER = "jev"
@@ -64,15 +65,12 @@ def main() -> None:
     os.environ["JEV_CODEX_STATUS_ID"] = status_id
     close = lambda: None  # noqa: E731
 
-    if os.environ.get("JEV_API_KEY"):
+    if api_key():
         handle = start_codex_proxy(status_id=status_id)
         close = handle.close
         args = codex_args(f"http://127.0.0.1:{handle.port}", args)
     else:
-        sys.stderr.write(
-            "[jev] no JEV_API_KEY found - starting Codex without routing\n"
-            f"[jev] add JEV_API_KEY=... to {Path.home() / '.jev-router.env'} and restart jev-codex\n"
-        )
+        sys.stderr.write(missing_key_notice("Codex"))
 
     try:
         result = subprocess.run([codex, *args], env=os.environ)

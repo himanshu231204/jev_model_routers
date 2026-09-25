@@ -124,6 +124,31 @@ OVERRIDE_PATTERNS: list[tuple[str, re.Pattern]] = [
     for t in TIERS
 ]
 
+# The TypeSafe key, under the name TypeSafe's docs and official SDK use. The only credential
+# the router reads for Jev.
+API_KEY_ENV = "TYPESAFE_API_KEY"
+# Name used by earlier versions; no longer read, only detected so the user is told to rename it.
+LEGACY_API_KEY_ENV = "JEV_API_KEY"
+
+
+def api_key() -> str | None:
+    return os.environ.get(API_KEY_ENV) or None
+
+
+def missing_key_notice(tool: str) -> str:
+    """What to tell the user when routing is off because the key is missing."""
+    env_file = "~/.jev-router.env"
+    if os.environ.get(LEGACY_API_KEY_ENV):
+        return (
+            f"[jev] {LEGACY_API_KEY_ENV} is no longer read - rename it to {API_KEY_ENV} "
+            f"(e.g. in {env_file}); starting {tool} without routing\n"
+        )
+    return (
+        f"[jev] no {API_KEY_ENV} found - starting {tool} without routing\n"
+        f"[jev] add {API_KEY_ENV}=... to {env_file} to enable routing\n"
+    )
+
+
 # System One model id sent as the request's top-level "model"; the API rejects requests without it.
 JEV_MODEL = "jev-latest"
 

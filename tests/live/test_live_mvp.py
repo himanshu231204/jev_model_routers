@@ -51,8 +51,8 @@ def captured_post(monkeypatch):
         return json.loads(FIXTURE.read_text(encoding="utf-8"))
 
     monkeypatch.setattr(stdlib_router, "_post", fake_post)
-    monkeypatch.setenv("JEV_API_KEY", "test-key")
-    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
     return calls
 
 
@@ -83,21 +83,27 @@ def test_real_response_is_parsed(captured_post):
     assert 0 <= out["metrics"]["taskComplexity"] <= 1
 
 
-def test_jev_api_key_is_sent_as_bearer(captured_post):
+def test_typesafe_api_key_is_sent_as_bearer(captured_post):
     stdlib_ask_jev(prompt="x", current="c", context_tokens=0, models=MODELS)
     assert captured_post[0]["headers"]["Authorization"] == "Bearer test-key"
 
 
-def test_jev_api_key_is_required(monkeypatch):
-    monkeypatch.delenv("JEV_API_KEY", raising=False)
-    monkeypatch.setenv("TYPESAFE_API_KEY", "legacy-key")
+def test_typesafe_api_key_is_required_and_legacy_name_ignored(monkeypatch):
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setenv("JEV_API_KEY", "legacy-key")
     monkeypatch.setattr(stdlib_router, "_post", lambda *a: pytest.fail("JEV must not be called"))
     assert stdlib_ask_jev(prompt="x", current="c", context_tokens=0, models=MODELS) is None
 
 
-def test_typesafe_api_key_is_not_referenced_by_the_live_router():
+def test_key_variable_names_live_only_in_config():
+    """One place decides which credential is read, so no module can quietly read another."""
     src = Path(stdlib_router.__file__).parent
-    offenders = [p.name for p in src.rglob("*.py") if "TYPESAFE_API_KEY" in p.read_text(encoding="utf-8")]
+    offenders = [
+        p.name
+        for p in src.rglob("*.py")
+        if p.name != "config.py"
+        and any(name in p.read_text(encoding="utf-8") for name in ("TYPESAFE_API_KEY", "JEV_API_KEY"))
+    ]
     assert offenders == []
 
 
@@ -105,7 +111,7 @@ def test_typesafe_api_key_is_not_referenced_by_the_live_router():
 
 
 def test_timeout_fails_open(monkeypatch):
-    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "k")
     monkeypatch.setattr(stdlib_router, "THRESHOLDS", Thresholds(jev_timeout_ms=50, jev_deadline_ms=120))
     monkeypatch.setattr(stdlib_router, "_post", lambda *a: time.sleep(1))
     started = time.time()
@@ -114,7 +120,7 @@ def test_timeout_fails_open(monkeypatch):
 
 
 def test_5xx_fails_open(monkeypatch):
-    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "k")
 
     def boom(*a):
         raise urllib.error.HTTPError("u", 503, "unavailable", {}, None)
@@ -124,7 +130,7 @@ def test_5xx_fails_open(monkeypatch):
 
 
 def test_malformed_response_fails_open(monkeypatch):
-    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "k")
     monkeypatch.setattr(stdlib_router, "_post", lambda *a: {"answers": {"model": {"choice": "x"}}})
     assert stdlib_ask_jev(prompt="x", current="c", context_tokens=0, models=MODELS) is None
 

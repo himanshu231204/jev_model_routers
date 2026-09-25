@@ -20,7 +20,7 @@ def test_live_sdk_router_returns_same_shape(monkeypatch):
     fake.Choice = FakeChoice; fake.Score = FakeScore
     fake.TypeSafeClient = FakeClient; fake.RetryPolicy = lambda **kw: kw
     monkeypatch.setitem(sys.modules, "typesafe_sdk", fake)
-    monkeypatch.setenv("JEV_API_KEY", "k")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "k")
     monkeypatch.setenv("JEV_CLIENT", "sdk")
     from jev_router_live.sdk_router import sdk_ask_jev
     out = sdk_ask_jev(prompt="fix bug", current="haiku", context_tokens=100,

@@ -21,6 +21,7 @@ from jev_router_live.config import (
     THRESHOLDS,
     question_for_models,
 )
+from jev_router_live.config import api_key as config_api_key
 from jev_router_live.log import log
 
 _ENDPOINT = os.environ.get("JEV_ENDPOINT", "https://api.typesafe.ai/v1/systemone")
@@ -73,7 +74,7 @@ def stdlib_ask_jev(*, prompt: str, current: str, context_tokens: int, models: li
     """
     if not models:
         return None
-    api_key = os.environ.get("JEV_API_KEY")
+    api_key = config_api_key()
     if not api_key:
         return None
 

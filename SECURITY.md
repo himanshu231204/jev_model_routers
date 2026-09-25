@@ -35,12 +35,12 @@ If that's unavailable, reach the maintainer directly via their GitHub profile
 
 ## Scope and Known Sensitive Areas
 
-The router runs a local proxy in front of Claude Code's API traffic, handles a `JEV_API_KEY`,
+The router runs a local proxy in front of Claude Code's API traffic, handles a `TYPESAFE_API_KEY`,
 and sends each new turn's prompt to TypeSafe's Jev API. The invariants below are the ones most
 worth checking when reviewing for security issues (see `ARCHITECTURE.md` §12 for detail):
 
-- **`JEV_API_KEY` is the only Jev credential and is read only by the Jev client.** It must never
-  be hard-coded, committed, printed or logged; `TYPESAFE_API_KEY` is ignored (a test enforces it).
+- **`TYPESAFE_API_KEY` is the only Jev credential**, read in one place (`config.py`). It must
+  never be hard-coded, committed, printed or logged. The earlier name `JEV_API_KEY` is not read.
 - **Claude Code's own credentials pass through untouched.** The proxy binds to `127.0.0.1` and
   reuses Claude Code's credential only to read `/v1/models` from the same upstream.
 - **Prompts, keys and auth headers are never logged.** The decision log holds safe metadata
@@ -59,7 +59,7 @@ fail-open fallback silently — that's exactly the kind of report this policy is
 
 ## Security Best Practices for Users
 
-- Store `JEV_API_KEY` in an environment variable, `~/.jev-router.env` (readable only by you) or a
+- Store `TYPESAFE_API_KEY` in an environment variable, `~/.jev-router.env` (readable only by you) or a
   secret manager — never in a file committed to version control.
 - Leave `JEV_DEBUG` off in normal use; it writes prompt excerpts to `~/.jev-claude.log`.
 - This project has zero runtime dependencies (stdlib only), which keeps the supply-chain surface

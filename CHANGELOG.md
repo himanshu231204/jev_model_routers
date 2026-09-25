@@ -8,14 +8,20 @@ project is at `0.1.0` (see `pyproject.toml`) and everything below is unreleased.
 
 ## [Unreleased]
 
+### Changed
+
+- The Jev key is now read from `TYPESAFE_API_KEY`, the name TypeSafe's docs and official SDK
+  use, instead of `JEV_API_KEY`. `JEV_API_KEY` is no longer read; if it is set without
+  `TYPESAFE_API_KEY`, `jev-claude` / `jev-codex` print a one-line notice to rename it.
+
 ### Removed
 
 - The session-start router package `src/jev_router/` (adapters for Claude Code, Codex,
   OpenCode, Hermes and DeepAgents; core router/policy/resolver; contracts; providers;
   transport; state), the `jev-router` command, `configs/` and their tests. The project is now
   the per-turn router `src/jev_router_live/` (`jev-claude`, `jev-codex`, `jev-explain`), which
-  never depended on it. `TYPESAFE_API_KEY` is no longer read anywhere; `JEV_API_KEY` is the only
-  key. Entries below that mention `jev_router`, `jev-router run` or its adapters are history.
+  never depended on it. Entries below that mention `jev_router`, `jev-router run` or its adapters
+  are history.
 
 ### Fixed (`jev-claude` live routing)
 

@@ -45,11 +45,12 @@ installed and logged in (subscription or API key — no extra Anthropic key is n
 
 ### 2. Set your Jev key
 
-Get a key from the [TypeSafe dashboard](https://console.typesafe.ai/keys). `JEV_API_KEY` is the
-only variable the router reads:
+Get a key from the [TypeSafe dashboard](https://console.typesafe.ai/keys). It goes in
+`TYPESAFE_API_KEY` — the name TypeSafe's docs and SDK use, and the only variable the router
+reads (earlier versions used `JEV_API_KEY`; rename it if you have one):
 
 ```bash
-echo "JEV_API_KEY=your_typesafe_key" > ~/.jev-router.env      # or export JEV_API_KEY=...
+echo "TYPESAFE_API_KEY=your_typesafe_key" > ~/.jev-router.env      # or export TYPESAFE_API_KEY=...
 ```
 
 > 🔒 Never commit or share your key. It is read from the environment, `./.env`,
@@ -139,7 +140,7 @@ streaming, failure handling — is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 | Variable | Effect |
 | --- | --- |
-| `JEV_API_KEY` | TypeSafe key for Jev. Required for routing; without it `jev-claude` runs plain Claude Code. |
+| `TYPESAFE_API_KEY` | TypeSafe key for Jev. Required for routing; without it `jev-claude` runs plain Claude Code. |
 | `JEV_ALLOW_FABLE=1` | Also offer Fable (bills extra usage credits). |
 | `JEV_NO_STATUSLINE=1` | Don't install the routing status line (your own status line is never overridden). |
 | `JEV_DEBUG=1` | Request-level tracing, including the first 60 characters of each routed prompt. |
@@ -158,7 +159,7 @@ pip install -e ".[test]"
 python -m pytest -q                         # all tests, Jev mocked
 
 # real Jev API (opt-in): trivial / medium / hard prompts
-JEV_LIVE_TESTS=1 JEV_API_KEY=... python -m pytest tests/live/test_live_jev_api.py -s
+JEV_LIVE_TESTS=1 TYPESAFE_API_KEY=... python -m pytest tests/live/test_live_jev_api.py -s
 ```
 
 ### Project Structure

@@ -10,7 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from jev_router_live.config import AUTO_MODEL
+from jev_router_live.config import AUTO_MODEL, api_key, missing_key_notice
 from jev_router_live.env_file import load_env
 from jev_router_live.log import LOG_FILE
 from jev_router_live.proxy import start_proxy
@@ -99,7 +99,7 @@ def main() -> None:
     settings_file: Path | None = None
     saved_model_before = read_saved_model()
 
-    if os.environ.get("JEV_API_KEY"):
+    if api_key():
         handle = start_proxy()
         close = handle.close
         env["ANTHROPIC_BASE_URL"] = f"http://127.0.0.1:{handle.port}"
@@ -111,10 +111,7 @@ def main() -> None:
         if os.environ.get("JEV_DEBUG") and sys.stdout.isatty():
             sys.stderr.write(f"[jev] routing decisions -> {LOG_FILE}\n")
     else:
-        sys.stderr.write(
-            "[jev] no JEV_API_KEY found - starting Claude Code without routing\n"
-            f"[jev] add JEV_API_KEY=... to {Path.home() / '.jev-router.env'} to enable routing\n"
-        )
+        sys.stderr.write(missing_key_notice("Claude Code"))
 
     try:
         result = subprocess.run([claude, *args], env=env)
