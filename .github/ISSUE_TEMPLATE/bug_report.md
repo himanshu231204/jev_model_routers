@@ -25,7 +25,7 @@ A clear and concise description of what you expected to happen.
 
 - OS: [e.g., Windows 11, macOS 14, Ubuntu 22.04]
 - Python version: [`python --version`]
-- jev-router version / commit: [e.g., 0.1.0, or `git rev-parse HEAD`]
+- jev-model-router version / commit: [e.g., 0.1.0, or `git rev-parse HEAD`]
 - Agent and version: [e.g., `claude --version` → 2.1.282, or `codex --version`]
 
 ## `~/.jev-claude.log` lines

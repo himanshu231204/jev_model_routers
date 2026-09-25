@@ -36,7 +36,7 @@ JEV Router again to turn it back on.
 | `JEV_NO_STATUSLINE=1` | Don't install the routing status line (yours is never overridden anyway). |
 | `JEV_DEBUG=1` | Add request-level tracing, including the first 60 characters of each routed prompt. |
 | `JEV_ENDPOINT` | Override the System One URL (testing). |
-| `JEV_CLIENT=sdk` | Use the optional TypeSafe SDK instead of stdlib HTTP (`pip install jev-router[typesafe]`). |
+| `JEV_CLIENT=sdk` | Use the optional TypeSafe SDK instead of stdlib HTTP (`pip install "jev-model-router[typesafe]"`). |
 
 ## Debugging
 

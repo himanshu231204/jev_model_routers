@@ -1,10 +1,11 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="JEV Router — the right Claude model for every turn" width="100%">
+  <img src="https://raw.githubusercontent.com/himanshu231204/jev_model_routers/main/assets/banner.svg" alt="JEV Router — the right Claude model for every turn" width="100%">
 </p>
 
 <p align="center">
   <a href="https://github.com/himanshu231204/jev_model_routers/actions/workflows/ci.yml"><img src="https://github.com/himanshu231204/jev_model_routers/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
+  <a href="https://pypi.org/project/jev-model-router/"><img src="https://img.shields.io/pypi/v/jev-model-router?color=d97757" alt="PyPI"></a>
+  <a href="https://github.com/himanshu231204/jev_model_routers/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue" alt="Python 3.11 | 3.12">
   <img src="https://img.shields.io/badge/dependencies-none-brightgreen" alt="Zero dependencies">
   <img src="https://img.shields.io/badge/Claude%20Code-supported-d97757" alt="Claude Code supported">
@@ -14,9 +15,9 @@
 <p align="center">
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-how-it-works">How it works</a> ·
-  <a href="docs/quickstart.md">User guide</a> ·
-  <a href="ARCHITECTURE.md">Architecture</a> ·
-  <a href="CONTRIBUTING.md">Contributing</a>
+  <a href="https://github.com/himanshu231204/jev_model_routers/blob/main/docs/quickstart.md">User guide</a> ·
+  <a href="https://github.com/himanshu231204/jev_model_routers/blob/main/ARCHITECTURE.md">Architecture</a> ·
+  <a href="https://github.com/himanshu231204/jev_model_routers/blob/main/CONTRIBUTING.md">Contributing</a>
 </p>
 
 ---
@@ -28,7 +29,7 @@ which of your models fits the turn, then runs it there. Claude Code keeps workin
 usual: same UI, tools, permissions, sessions and streaming.
 
 ```bash
-pip install git+https://github.com/himanshu231204/jev_model_routers
+pip install jev-model-router
 jev-claude          # that's it — Claude Code, with per-turn routing
 ```
 
@@ -52,8 +53,8 @@ jev-claude          # that's it — Claude Code, with per-turn routing
 ## 🎬 Demo
 
 <p align="center">
-  <img src="assets/images/jev-claude-02-model-picker.png" alt="The /model picker with the JEV Router row" width="49%">
-  <img src="assets/images/jev-claude-03-trivial-turn-haiku.png" alt="A rename task routed to Haiku" width="49%">
+  <img src="https://raw.githubusercontent.com/himanshu231204/jev_model_routers/main/assets/images/jev-claude-02-model-picker.png" alt="The /model picker with the JEV Router row" width="49%">
+  <img src="https://raw.githubusercontent.com/himanshu231204/jev_model_routers/main/assets/images/jev-claude-03-trivial-turn-haiku.png" alt="A rename task routed to Haiku" width="49%">
 </p>
 <p align="center"><sub><b>Left:</b> "JEV Router" in Claude Code's own <code>/model</code> picker. <b>Right:</b> a rename routed to Haiku — the status line shows the model Jev picked.</sub></p>
 
@@ -63,21 +64,21 @@ jev-claude          # that's it — Claude Code, with per-turn routing
 
 **A harder turn moves up to Opus** — Jev is asked again on the next message:
 
-![A design question routed to Opus](assets/images/jev-claude-04-hard-turn-opus.png)
+![A design question routed to Opus](https://raw.githubusercontent.com/himanshu231204/jev_model_routers/main/assets/images/jev-claude-04-hard-turn-opus.png)
 
 **Picking a model yourself pauses routing** — the status line shows `⏸ manual`:
 
-![Manual model selection bypasses Jev](assets/images/jev-claude-05-manual-model.png)
+![Manual model selection bypasses Jev](https://raw.githubusercontent.com/himanshu231204/jev_model_routers/main/assets/images/jev-claude-05-manual-model.png)
 
 **`jev-explain` shows why** a turn got its model:
 
-![jev-explain report](assets/images/jev-claude-06-explain.png)
+![jev-explain report](https://raw.githubusercontent.com/himanshu231204/jev_model_routers/main/assets/images/jev-claude-06-explain.png)
 
 **One safe log line per turn** — no prompt, no keys:
 
-![Decision log](assets/images/jev-claude-07-decision-log.png)
+![Decision log](https://raw.githubusercontent.com/himanshu231204/jev_model_routers/main/assets/images/jev-claude-07-decision-log.png)
 
-<sub>Captured from a real Claude Code 2.1.282 session through <code>jev-claude</code>; Jev's answers came from the local stand-in <a href="scripts/fake_jev.py"><code>scripts/fake_jev.py</code></a>.</sub>
+<sub>Captured from a real Claude Code 2.1.282 session through <code>jev-claude</code>; Jev's answers came from the local stand-in <a href="https://github.com/himanshu231204/jev_model_routers/blob/main/scripts/fake_jev.py"><code>scripts/fake_jev.py</code></a>.</sub>
 </details>
 
 ## 🚀 Quick start
@@ -89,8 +90,10 @@ logged in (a claude.ai subscription or an API key — no extra Anthropic key nee
 **1. Install**
 
 ```bash
-pip install git+https://github.com/himanshu231204/jev_model_routers
+pip install jev-model-router
 ```
+
+<sub>Latest development version: <code>pip install git+https://github.com/himanshu231204/jev_model_routers</code></sub>
 
 **2. Add your TypeSafe key** — `TYPESAFE_API_KEY`, the name TypeSafe's docs and SDK use:
 
@@ -110,7 +113,7 @@ jev-claude --resume                 # sessions work as usual
 
 The session starts on **JEV Router**. Watch the status line — e.g.
 `claude-haiku-4-5-20251001 (p=0.97)` — to see which model each turn got. The full guide, with
-troubleshooting, is in [`docs/quickstart.md`](docs/quickstart.md).
+troubleshooting, is in [`docs/quickstart.md`](https://github.com/himanshu231204/jev_model_routers/blob/main/docs/quickstart.md).
 
 ## 🧠 How it works
 
@@ -134,7 +137,7 @@ flowchart LR
 
 Jev doesn't write code — Claude does. Jev answers one quick structured question per turn, the
 kind of *"route this to one of a fixed set of destinations, and know how confident you are"*
-decision it is built for. Design details: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+decision it is built for. Design details: [`ARCHITECTURE.md`](https://github.com/himanshu231204/jev_model_routers/blob/main/ARCHITECTURE.md).
 
 ## ⚙️ Configuration
 
@@ -146,10 +149,10 @@ Everything works with just the key. Optional environment variables:
 | `JEV_ALLOW_FABLE=1` | Also offer Fable (bills extra usage credits). |
 | `JEV_NO_STATUSLINE=1` | Don't add the routing status line (your own status line is never overridden). |
 | `JEV_DEBUG=1` | Request-level tracing in `~/.jev-claude.log`, including prompt excerpts. |
-| `JEV_CLIENT=sdk` | Call Jev through the official `typesafe-sdk` (`pip install "jev-router[typesafe] @ git+https://github.com/himanshu231204/jev_model_routers"`). |
+| `JEV_CLIENT=sdk` | Call Jev through the official `typesafe-sdk` (`pip install "jev-model-router[typesafe]"`). |
 
 Routing thresholds (confidence floor, cache protection, timeouts) live in one file:
-[`src/jev_router_live/config.py`](src/jev_router_live/config.py).
+[`src/jev_router_live/config.py`](https://github.com/himanshu231204/jev_model_routers/blob/main/src/jev_router_live/config.py).
 
 ## 🧰 Commands
 
@@ -201,13 +204,13 @@ Harmless — it's Claude Code noting the extra "JEV Router" entry. Requests are 
 **Beta.** Verified end to end against Claude Code 2.1.282 (interactive and `-p`): the picker entry,
 per-turn routing, tool-loop pinning, manual override, fail-open and streaming, with 94 automated
 tests on Python 3.11 and 3.12. OpenAI Codex support (`jev-codex`) is experimental. Known
-limitations are listed in [`ARCHITECTURE.md`](ARCHITECTURE.md#15-known-limitations).
+limitations are listed in [`ARCHITECTURE.md`](https://github.com/himanshu231204/jev_model_routers/blob/main/ARCHITECTURE.md#15-known-limitations).
 
 ## 🤝 Contributing
 
-Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup and conventions and
-[`AGENTS.md`](AGENTS.md) for the invariants a change must keep. Please report security issues
-privately as described in [`SECURITY.md`](SECURITY.md).
+Contributions are welcome — see [`CONTRIBUTING.md`](https://github.com/himanshu231204/jev_model_routers/blob/main/CONTRIBUTING.md) for setup and conventions and
+[`AGENTS.md`](https://github.com/himanshu231204/jev_model_routers/blob/main/AGENTS.md) for the invariants a change must keep. Please report security issues
+privately as described in [`SECURITY.md`](https://github.com/himanshu231204/jev_model_routers/blob/main/SECURITY.md).
 
 ```bash
 git clone https://github.com/himanshu231204/jev_model_routers.git && cd jev_model_routers
@@ -217,6 +220,6 @@ python -m pytest -q
 
 ## 📄 License
 
-[MIT](LICENSE) © 2026 Himanshu Kumar
+[MIT](https://github.com/himanshu231204/jev_model_routers/blob/main/LICENSE) © 2026 Himanshu Kumar
 
 <sub>JEV Router is an independent open-source project and is not affiliated with Anthropic or TypeSafe. Claude and Claude Code are products of Anthropic; Jev is a model by TypeSafe.</sub>
