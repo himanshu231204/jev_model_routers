@@ -24,7 +24,7 @@ Closes #(issue_number)
 
 ## Checklist
 
-- [ ] Code lands in the correct layer (see `AGENTS.md`'s dependency direction: CLI → adapters → core → contracts)
+- [ ] Code lands in the right module (see `AGENTS.md`'s module boundaries); no second router, Jev client or proxy
 - [ ] Explicit overrides, fresh-turn pinning, and fail-open fallback still hold (if touching routing logic)
 - [ ] No secrets or prompt content added to logs/errors
 - [ ] `python -m pytest` passes; new tests added for non-trivial changes

@@ -1,217 +1,123 @@
-# Quick Start — Integration Guide
+# Quick Start — Using JEV Router with Claude Code
 
-> How to integrate JEV Model Router into your coding agent.
-
----
-
-## What This Covers
-
-This guide shows how to route your coding agent's model requests through JEV Model Router automatically. Three integration strategies are supported:
-
-1. **CLI Wrapper** — wrap an existing agent command
-2. **Reverse Proxy** — point agent's provider endpoint at JEV
-3. **SDK Adapter** — embed the router into Python/TypeScript code
+> Set up `jev-claude`, use it day to day, and understand what it decided.
 
 ---
 
-## Prerequisites
+## 1. Prerequisites
 
 - **Python ≥ 3.11**
-- **A [TypeSafe](https://typesafe.ai/) API key** — `jev/client.py` calls TypeSafe's Jev
-  decision model via TypeSafe's System One API (`POST https://api.typesafe.ai/v1/systemone`),
-  so `TYPESAFE_API_KEY` holds a TypeSafe key.
+- **[Claude Code](https://code.claude.com/docs/en/setup)** installed and logged in (a claude.ai
+  subscription or an API key both work; no extra Anthropic key is needed)
+- **A TypeSafe key** from the [TypeSafe dashboard](https://console.typesafe.ai/keys) — Jev is
+  TypeSafe's decision model
+
+## 2. Install
+
+```bash
+git clone https://github.com/himanshu231204/jev_model_routers.git
+cd jev_model_routers
+pip install -e .
+```
+
+This installs `jev-claude`, `jev-codex` and `jev-explain`. There are no runtime dependencies.
+Optional: `pip install -e ".[typesafe]"` and `JEV_CLIENT=sdk` to call Jev through the official
+TypeSafe SDK instead of the built-in stdlib client.
+
+## 3. Add your key
+
+`JEV_API_KEY` is the only variable the router reads. Put it in a file so every terminal has it:
 
 ```bash
 # Linux / macOS
-export TYPESAFE_API_KEY="your_typesafe_api_key"
+echo "JEV_API_KEY=your_typesafe_key" > ~/.jev-router.env
 
 # Windows PowerShell
-$env:TYPESAFE_API_KEY="your_typesafe_api_key"
+Set-Content "$HOME\.jev-router.env" "JEV_API_KEY=your_typesafe_key"
 ```
 
----
+It is also read from the environment, `./.env` or `~/.jev-claude.env`. It is sent only to
+TypeSafe and never logged. Without it, `jev-claude` prints a notice and starts plain Claude
+Code with no routing.
 
-## Install
+## 4. Use it
 
 ```bash
-pip install -e .
-# or
-pip install jev-router
+jev-claude                               # interactive Claude Code, routing each new turn
+jev-claude -p "fix the failing test"     # print mode; all Claude Code arguments are forwarded
+jev-claude --resume                      # sessions, resume and permissions work as usual
 ```
 
-Optional: `pip install jev-router[typesafe]` + `jev.client: sdk` (or `JEV_CLIENT=sdk`) to route via the official SDK. Default stays stdlib with zero extra deps.
+- The session starts on **JEV Router** (the header shows `jev-router`). It is never saved as
+  your default model; plain `claude` is unaffected.
+- **Each new message you send** asks Jev once which of your account's models fits (newest
+  Haiku / Sonnet / Opus). Everything Claude does to answer that message — file reads, edits,
+  commands — stays on that model. Your next message is routed again.
+- The **status line** shows the model used for the last turn and Jev's confidence, e.g.
+  `claude-haiku-4-5-20251001 (p=0.97) · my-project · 21% context`.
+- **`/model` → any real model** turns routing off for the session (status line: `⏸ manual`).
+  **`/model` → JEV Router** turns it back on.
+- Say it in the prompt to force a tier for one turn: "use opus …", "switch to fast …".
 
-Verify:
+The `README.md` has screenshots of each of these steps.
+
+## 5. Understand a decision
 
 ```bash
-jev-router --help
+jev-explain <session-id>      # or /jev-explain inside Claude Code, if you've installed the skill
 ```
 
----
+Shows the prompt Jev saw, its scores (task complexity, reasoning, tool complexity), the
+recommended and selected model, confidence and the policy's reason. The log file has one line per
+routed turn:
 
-## Integration Strategies
-
-### 1. CLI Wrapper
-
-The simplest approach. Launch your agent through `jev-router run --agent <name> --prompt
-"<task>"`:
-
-```bash
-jev-router run --agent claude_code --prompt "add input validation to the login form"
-jev-router run --agent codex --prompt "write a script to migrate the database schema"
-jev-router run --agent hermes --prompt "fix the failing CI job"
+```text
+$ tail ~/.jev-claude.log
+[jev] turn=5f877f163e09 decision=haiku model=claude-haiku-4-5-20251001 confidence=0.97 latency=312ms reason=jev ctx~3284
+[jev] turn=5f877f163e09 decision=opus model=claude-opus-5-5 confidence=0.97 latency=287ms reason=jev ctx~3773
 ```
 
-`--agent` defaults to `claude_code`. `--prompt`/`-p` is the task description JEV routes on —
-**omit it and JEV has no signal to route with**: live-verified, an empty prompt reliably
-returns confidence around 0.27 (below the policy's `low` threshold of 0.30), so the router
-falls back to the current/default model (`reason=low_confidence_keep_current`) instead of
-picking one. The same real prompt live-verified confidence 0.97 for the same tier. Run
-`jev-router agents` to see the full list of registered adapter names.
-
-`jev-router run` makes **one JEV routing decision at session start**, then launches the real
-agent binary via `subprocess.run` with that model applied (`claude --model <m>`,
-`codex --model <m>`, or `hermes chat --model <m>`), inheriting stdio for a normal interactive
-session. This is *not* per-turn routing — there is no live proxy intercepting requests
-mid-session yet (see "Reverse Proxy" below), so the model picked at launch stays fixed for the
-whole session.
-
-Two adapters raise a clear error instead of launching, rather than faking a working command:
-- `opencode` — its interactive CLI (`opencode [directory]`) has no top-level `--model` flag;
-  `--model` only exists under `opencode run`, a one-shot non-interactive mode.
-- `deepagents` — has no standalone CLI binary at all; it's embedded via
-  `adapters/deepagents/adapter.py`/`middleware.py` instead.
-
-Additional commands:
-
-```bash
-jev-router agents     # List detected agents
-jev-router models     # Show available models
-jev-router status     # Show current routing state
-jev-router explain    # Explain the last routing decision
-jev-router doctor     # Diagnose configuration and adapter compatibility
-```
-
-### 2. Reverse Proxy
-
-> **Not yet implemented.** `src/jev_router/transport/` has `HttpTransport`, `SseTransport`,
-> and `WebsocketTransport`, but there is no `--proxy` CLI flag or standalone proxy server yet.
-> The strategy below describes the target design from `ARCHITECTURE.md`, not current behavior.
-
-Set your agent's `base_url` to the JEV local proxy:
-
-```mermaid
-graph LR
-    A[Coding Agent] --> B["localhost:PORT (JEV Proxy)"]
-    B --> C[Upstream Provider]
-```
-
-The router intercepts model requests, rewrites the model identifier, and forwards to the original provider. Works with any agent that supports configurable `base_url`/provider endpoint.
-
-Start the proxy:
-
-```bash
-jev-router --proxy
-```
-
-Then configure your agent to use `http://localhost:PORT` as its provider endpoint.
-
-### 3. SDK Adapter
-
-> **Not yet implemented.** There is no `JEVRouter` or `JEVRoutedModel` class in
-> `src/jev_router/` today — DeepAgents integration currently goes through
-> `adapters/deepagents/adapter.py` and `middleware.py` like the other adapters. The example
-> below describes the target design from `ARCHITECTURE.md`, not current behavior.
-
-For agents embedded as Python/TypeScript libraries (DeepAgents, custom agents):
-
-```python
-from jev_router import JEVRouter
-
-router = JEVRouter()
-
-# Use JEVRoutedModel to intercept model selection
-agent = create_agent(
-    model=JEVRoutedModel(candidates=["claude-sonnet", "claude-opus"])
-)
-```
-
-The adapter intercepts the model invocation boundary:
-- One logical user turn → one JEV decision
-- All tool iterations reuse the pinned model
-- Sub-agents route independently or inherit the parent model
-
----
-
-## How It Works
-
-```mermaid
-flowchart TD
-    A[Agent Request] --> B["Adapter (agent-specific)"]
-    B --> C[Normalized Request]
-    C --> D["JEV API (what model should I use?)"]
-    D --> E["Policy Engine (confidence, overrides, cost/latency)"]
-    E --> F["Model Resolver (picks concrete model)"]
-    F --> G["Turn State (pin model for the whole tool loop)"]
-    G --> H["Provider / Model (execution)"]
-```
-
-**Key invariants:**
-
-- **One decision per fresh turn** — pinned through the entire tool loop
-- **Explicit user choice always wins** — manual override beats automatic routing
-- **Fail open** — if JEV is unavailable, falls back to current/default model
-- **No secrets in logs** — API keys and prompts are never logged
-
----
-
-## Configuration
-
-Config precedence: **CLI args → env vars → project config → user config → defaults**.
-
-Example `config.yaml`:
-
-```yaml
-router:
-  enabled: true
-  policy: default
-  fail_mode: open
-
-jev:
-  timeout_ms: 1500
-  deadline_ms: 3000
-  max_retries: 1
-
-agents:
-  auto_detect: true
-```
-
-For full configuration options, see `ARCHITECTURE.md` §10 (Configuration).
-
----
-
-## Troubleshooting
-
-| Problem | Solution |
+| `reason` | Meaning |
 |---|---|
-| JEV unavailable | Router falls back to current model automatically |
-| Agent not detected | Run `jev-router doctor` to diagnose |
-| `opencode`/`deepagents` won't launch | Expected — their `launch_command` raises `NotImplementedError`; see "CLI Wrapper" above |
-| `claude_code` rejects `--model <id>` as unknown | Fixed for the default catalog — `ClaudeCodeAdapter.launch_command` translates `anthropic/claude-{fable,sonnet,opus}` to the real `fable`/`sonnet`/`opus` aliases. If you add a custom id to `models.allow` it won't be in that translation table and will pass through as-is; add it to `_MODEL_ALIASES` in `adapters/claude_code/adapter.py`, or use a real Claude Code model name directly. `codex`/`hermes`/`opencode` still receive the catalog id verbatim — no translation table exists for them yet. |
-| Wrong model routed | Check `jev-router status`/`explain`; there's no manual override flag on `run` yet, only the adapters' own `--model` once launched |
+| `jev` | followed Jev's recommendation |
+| `override` | your prompt named a tier ("use opus") |
+| `jev-unavailable` | Jev failed or timed out; kept the current model (first turn: Opus) |
+| `low-confidence-no-downgrade` / `low-confidence-capped` | Jev was unsure; didn't downgrade / capped at Sonnet |
+| `downgrade-not-worth-cache-rebuild` | a long conversation isn't downgraded (switching would re-read it all) |
+| `…+unavailable` | nearest tier your account has |
+| `…/no-change` | the model stayed the same |
 
-Run `jev-router doctor` for environment diagnostics.
+## 6. Configuration
+
+| Variable | Effect |
+| --- | --- |
+| `JEV_API_KEY` | Required for routing. |
+| `JEV_ALLOW_FABLE=1` | Also offer Fable (bills extra usage credits). |
+| `JEV_NO_STATUSLINE=1` | Don't add the routing status line. If you already have your own status line, it is kept either way. |
+| `JEV_DEBUG=1` | Request-level tracing in the log, including the first 60 characters of each routed prompt. |
+| `JEV_CLIENT=sdk` | Use `typesafe-sdk` for the Jev call. |
+| `JEV_ENDPOINT` | Point at another System One URL (testing). |
+
+Thresholds (confidence floor, cache-protection size, Jev timeouts) are in
+`src/jev_router_live/config.py`.
+
+## 7. Troubleshooting
+
+| Problem | What to check |
+|---|---|
+| `[jev] no JEV_API_KEY found` | Add the key (step 3). |
+| Every turn says `reason=jev-unavailable` | The log line above it has the cause (network, HTTP 401 for a bad key, timeout). Claude Code keeps working meanwhile. |
+| `[claude-code:unrecognized_model] {"model":"jev-router"}` at startup | Harmless one-line warning from Claude Code; requests are still routed. |
+| Status line shows `⏸ manual` | You picked a model in `/model`; pick JEV Router to resume routing. |
+| Status line missing | You have your own `statusLine` (kept on purpose), or `JEV_NO_STATUSLINE` is set. |
+| Want to see exactly what was sent | `JEV_DEBUG=1 jev-claude`, then read `~/.jev-claude.log`. |
+
+## 8. OpenAI Codex
+
+`jev-codex` works the same way for the Codex CLI (a "Jev Router" entry in Codex's model picker,
+a commentary line announcing each decision, `$jev-explain`). It has had less real-session
+testing than the Claude Code path.
 
 ---
 
-## Adding a New Agent
-
-To add support for a new coding agent:
-
-1. Create `src/jev_router/adapters/<name>/adapter.py`
-2. Implement normalization, turn detection, and model application
-3. Register in `src/jev_router/adapters/registry.py`
-4. Add fixtures and tests
-
-No changes to core router, policy, or JEV auth are needed. See `ARCHITECTURE.md` §8
-(Architectural Rules) and `AGENTS.md`'s "Common workflows" section for the full checklist.
+How it works internally: [`ARCHITECTURE.md`](../ARCHITECTURE.md).

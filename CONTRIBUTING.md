@@ -25,15 +25,15 @@ pip install -e ".[test]"
 
 This requires Python >= 3.11 and pulls in `pytest` (a test-only extra). The project itself has
 **zero runtime dependencies** (stdlib only) — adding one is a significant decision that needs
-justifying (see `ARCHITECTURE.md` §8, rule 10).
+justifying.
 
-### 3. Set a TypeSafe API Key (optional, for live routing)
+### 3. Set a Jev key (optional, for live routing)
 
-Tests mock the JEV API by default, so this isn't required to run the test suite. It is required
-to actually exercise routing:
+Tests mock Jev by default, so this isn't required to run the test suite. It is required to
+actually exercise routing (a TypeSafe key; `JEV_API_KEY` is the only variable read):
 
 ```bash
-export TYPESAFE_API_KEY="your_typesafe_api_key"   # PowerShell: $env:TYPESAFE_API_KEY="..."
+export JEV_API_KEY="your_typesafe_key"   # PowerShell: $env:JEV_API_KEY="..."
 ```
 
 ### 4. Run the Tests
@@ -45,9 +45,12 @@ python -m pytest
 Run a single file or test with:
 
 ```bash
-python -m pytest tests/unit/test_policy.py
-python -m pytest tests/unit/test_policy.py::test_name
+python -m pytest tests/live/test_live_policy.py
+python -m pytest tests/live/test_live_policy.py::test_name
 ```
+
+Against the real Jev API (opt-in): `JEV_LIVE_TESTS=1 python -m pytest tests/live/test_live_jev_api.py -s`.
+For a real Claude Code run without Jev access, see `scripts/fake_jev.py`.
 
 There is no linter, formatter, or type-checker configured in this repo — don't add one as part
 of an unrelated change; verification today is `python -m pytest` plus an import check.
@@ -65,40 +68,33 @@ This repo uses conventional prefixes, consistent with its commit history:
 | Documentation | `docs/<description>` | `docs/collapse-docs-split` |
 | Maintenance | `chore/<description>` | `chore/remove-skills-lock` |
 
-### Architectural Rules (read before touching `core/`)
+### Architectural Rules (read before touching `src/jev_router_live/`)
 
-The router's dependency direction is one-way: **CLI → adapters → core → contracts**.
+- Keep the module boundaries: the Jev client (`stdlib_router.py`) knows nothing about Claude
+  Code; `policy.py` is pure (no I/O); `proxy.py` is the only module that understands the
+  Anthropic wire format. Don't add a second router, Jev client or proxy.
+- Claude Code must keep working exactly as usual: rewrite only the model (and fields that model
+  cannot accept), stream responses through, and fall back rather than block on any failure.
 
-- `core/` imports `contracts/` only. Providers and transports are *injected*, never imported.
-- Agent-specific protocol knowledge (parsing, proxies, version quirks) lives in
-  `adapters/<agent>/` — never `if agent == "claude":` in `core/`.
-- Adding a new coding agent should require only a new `adapters/<name>/` directory + fixtures +
-  tests + registration in `adapters/registry.py` — **not** a change to `core/router.py`,
-  `core/policy.py`, or `core/resolver.py`. This is the project's own definition of success (see
-  `ARCHITECTURE.md` §14).
-
-Full rules: `ARCHITECTURE.md` §8 (Architectural Rules) and §7 (Routing Invariants — things that
-must not regress, like fail-open behavior and explicit-override-always-wins).
+Full rules: `AGENTS.md` (routing invariants — things that must not regress, like one Jev call
+per turn, explicit-choice-always-wins and fail-open) and `ARCHITECTURE.md`.
 
 ### Coding Standards
 
-- Match the existing terse, low-comment style in `src/jev_router/` — comments explain *why*,
-  not *what*.
-- No hardcoded values where config already exists (`configs/default.yaml`).
-- Never build JEV auth headers outside `jev/client.py`; `TYPESAFE_API_KEY` is read there
-  exclusively.
-- Never log prompts, keys, or auth headers — `configs/default.yaml` ships
-  `privacy.log_prompts: false` by default; keep that semantics.
+- Match the existing terse, low-comment style — comments explain *why*, not *what*.
+- Routing thresholds and model ids belong in `config.py`, not scattered through the code.
+- `JEV_API_KEY` is read only by the Jev client; never log prompts, keys or auth headers. The
+  decision log (`log.record`) takes safe metadata only.
 
 ### Testing
 
-- pytest only (`pyproject.toml` sets `testpaths = ["tests"]`).
-- Mock the JEV API in all default tests. Live tests are opt-in via `JEV_LIVE_TESTS=1` plus a
-  real `TYPESAFE_API_KEY` — never commit a real key in a fixture.
-- Adapter tests are fixture-driven (`tests/fixtures/`): when a protocol changes, capture a
-  sanitized upstream request, note the agent version, and assert the expected routing behavior.
-- Any non-trivial change to policy, resolution, overrides, fresh-turn detection, state
-  isolation, or fallback needs a test — these are the pure-logic hot spots.
+- pytest only (`pyproject.toml` sets `testpaths = ["tests"]`); tests live in `tests/live/`.
+- Mock Jev in all default tests. The real-API test is opt-in via `JEV_LIVE_TESTS=1` plus a real
+  `JEV_API_KEY` — never commit a real key in a fixture.
+- Proxy tests run against a local fake Anthropic upstream; when Claude Code's request shapes
+  change, model the test on captured real traffic and note the Claude Code version.
+- Any non-trivial change to policy, turn detection, pinning, catalog, rewriting, streaming,
+  fallback or file handling needs a test.
 
 ### Commit Guidelines
 
@@ -111,8 +107,8 @@ imperative and under ~72 characters.
 1. Push your branch and open a PR — the PR template will guide you through the checklist.
 2. Make sure `python -m pytest` passes; CI (`.github/workflows/ci.yml`) runs it on Python 3.11
    and 3.12.
-3. If the change alters routing behavior, update `ARCHITECTURE.md` alongside the code (not
-   `docs/*` — see the note at the top of `docs/README.md`).
+3. If the change alters routing behavior, update `ARCHITECTURE.md` alongside the code, and
+   `README.md` / `docs/quickstart.md` if users will notice.
 
 ## Reporting Issues
 

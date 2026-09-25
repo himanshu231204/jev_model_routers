@@ -6,8 +6,8 @@ Thank you for using JEV Model Router! This document explains how to get help.
 
 ### Documentation
 
-- **README**: [README.md](README.md) — installation, quick start, CLI reference
-- **Quickstart guide**: [docs/quickstart.md](docs/quickstart.md) — full integration guide
+- **README**: [README.md](README.md) — installation, quick start, screenshots
+- **Quickstart guide**: [docs/quickstart.md](docs/quickstart.md) — using `jev-claude`, reading decisions, troubleshooting
 - **Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md) — design, invariants, rules
 - **Changelog**: [CHANGELOG.md](CHANGELOG.md) — version history
 
@@ -25,7 +25,9 @@ Thank you for using JEV Model Router! This document explains how to get help.
 
 1. Search existing issues — your bug may already be reported
 2. Check the README and `docs/quickstart.md` — the answer may already be documented
-3. Run `jev-router doctor` — it diagnoses common environment/config issues
+3. Check `~/.jev-claude.log` — every routing decision and failure is logged there (re-run with
+   `JEV_DEBUG=1` for request-level detail), and the quickstart's Troubleshooting table covers
+   the common cases
 4. Reproduce the issue — ensure you can reproduce it consistently
 
 ### How to Report
@@ -33,9 +35,11 @@ Thank you for using JEV Model Router! This document explains how to get help.
 1. Create an issue using the Bug Report template
 2. Include:
    - Clear description
-   - Steps to reproduce (including the exact `jev-router` command used)
+   - Steps to reproduce (including the exact `jev-claude` / `jev-codex` command used)
    - Expected vs actual behavior
-   - Environment details (OS, Python version, `jev-router --help` output)
+   - Environment details (OS, Python version, `claude --version`)
+   - The relevant `~/.jev-claude.log` lines (they contain no prompts or keys; remove any
+     `JEV_DEBUG` prompt excerpts before posting)
 
 ### After Reporting
 
@@ -46,7 +50,7 @@ Thank you for using JEV Model Router! This document explains how to get help.
 ### Before Requesting
 
 1. Check existing issues — your feature may already be requested
-2. Check `ARCHITECTURE.md` — it may already be planned (see §12 Implementation Phases)
+2. Check `ARCHITECTURE.md` — including its Known Limitations section
 
 ### How to Request
 
@@ -56,9 +60,8 @@ Thank you for using JEV Model Router! This document explains how to get help.
 ## Frequently Asked Questions
 
 **Q: What is JEV Model Router?**
-A: An agent-agnostic model-routing layer that sits between coding agents (Claude Code, Codex,
-OpenCode, DeepAgents, Hermes) and the models they use, picking the right model per session via
-TypeSafe's Jev decision model.
+A: A local proxy for Claude Code (and OpenAI Codex) that picks the cheapest capable Claude
+model for each new turn, using TypeSafe's Jev decision model, while Claude Code works as usual.
 
 **Q: Is it free?**
 A: Yes, it's open source under the MIT license. You do need your own
@@ -70,9 +73,12 @@ A: See the Quick Start section in [README.md](README.md#quick-start).
 **Q: How can I contribute?**
 A: See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Q: `jev-router run --agent opencode` (or `deepagents`) fails immediately — is that a bug?**
-A: No — expected. Neither has a working subprocess launch path yet; see
-[docs/quickstart.md](docs/quickstart.md#1-cli-wrapper) for why.
+**Q: Claude Code prints `[claude-code:unrecognized_model] {"model":"jev-router"}` at startup — is that a bug?**
+A: No — it's a harmless one-line warning from Claude Code about the "JEV Router" entry; requests
+are still routed. See the quickstart's Troubleshooting table.
+
+**Q: Does it replace Claude?**
+A: No. Jev only decides which Claude model handles each turn; Claude still does the work.
 
 ## Community Guidelines
 

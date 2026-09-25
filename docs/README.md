@@ -1,13 +1,10 @@
 # JEV Model Router — Docs
 
-Two documents cover this project:
+- **[`quickstart.md`](./quickstart.md)** — user guide: install, set `JEV_API_KEY`, use
+  `jev-claude` day to day, read decisions, troubleshoot.
+- **[`ARCHITECTURE.md`](../ARCHITECTURE.md)** — the design source of truth: request flow,
+  turn detection, policy, the Jev call, model catalog, fail-open, streaming, security.
+- **[`AGENTS.md`](../AGENTS.md)** — rules for changing the code (invariants, tests, done criteria).
 
-- **[`ARCHITECTURE.md`](../ARCHITECTURE.md)** — the single source of truth for design: goals,
-  non-goals, system architecture, components, routing invariants, architectural rules, project
-  structure, configuration, testing rules, implementation phases, and reference material.
-- **[`quickstart.md`](./quickstart.md)** — integration guide: install, set
-  `TYPESAFE_API_KEY`, and use the CLI to route a real coding-agent session.
-
-For current implementation status (what's actually built, not just designed), see the root
-[`AGENTS.md`](../AGENTS.md) and [`README.md`](../README.md) — both are kept up to date with
-`src/` and `tests/`.
+`superpowers/` holds dated historical design notes; some describe the removed session-start
+router and are not current guidance.

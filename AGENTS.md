@@ -1,232 +1,98 @@
 # AGENTS.md — JEV Model Router
 
-Agent-agnostic model-routing layer for coding agents (Claude Code, Codex, OpenCode, DeepAgents, Hermes).
-Flow: coding agent → adapter → normalized request → router → policy → model resolver → provider.
+Per-turn model routing for Claude Code (and OpenAI Codex), decided by TypeSafe's Jev.
+Flow: Claude Code → local proxy (`jev_router_live`) → Jev picks a model for each fresh turn →
+policy → request rewritten to that model → Anthropic → streamed back unchanged.
 
 ## Current state of this repo (read this first)
 
-- **All phases are implemented.** Every package under `src/jev_router/` (`cli/`, `core/`,
-  `contracts/`, `adapters/`, `providers/`, `jev/`, `transport/`, `state/`, `config/`,
-  `observability/`, `security/`) has real code, not stubs — e.g. `core/router.py`,
-  `core/policy.py`, `core/resolver.py`, `jev/client.py`, and full adapters for
-  `claude_code`, `codex`, `opencode`, `hermes`, `deepagents`. Implement inside the existing
-  files/packages, do not restructure or rename packages to suit yourself.
-- **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
-  `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
-  (see `ARCHITECTURE.md` §9). `tests/live/` covers `jev_router_live` (§16) the same way.
-  `python -m pytest` passes (161 tests, 3 skipped live-API tests, as of this writing). Add
-  tests alongside any change per the testing rules below.
-- **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
-  invent tool commands or add tooling unless asked. Verification today = import check + pytest.
-- **`ARCHITECTURE.md` (~204 lines, 15 sections) is the design source of truth — read it
-  directly.** `docs/` holds only `docs/README.md` (points here) and `docs/quickstart.md`
-  (integration guide, hand-maintained, may be edited directly to stay accurate to `src/`). The
-  old one-file-per-section split (`docs/01`–`docs/14`) and five empty placeholder directories
-  were removed as unnecessary duplication. All of `docs/` is tracked and committed — it is not
-  local scratch. Only `.superpowers/`, `.tmp/`, and `.agents/` are local/untracked work; leave
-  those alone.
-- **The JEV client is wired to TypeSafe's real System One API**, not a placeholder. `jev/
-  client.py` calls `POST https://api.typesafe.ai/v1/systemone` with `TYPESAFE_API_KEY` as the
-  bearer token — the same env var name TypeSafe's own SDK reads by default, even though this
-  router calls the raw HTTP API directly via stdlib `urllib` (zero runtime deps) rather than
-  depending on the SDK. `jev/questions.py` builds the `{model, state, questions}` request
-  (a single `"tier"` choice question); `jev/normalize.py` parses the
-  `{answers: {tier: {choice, confidence}}}` response. Both shapes are verified against
-  TypeSafe's quickstart (`docs.typesafe.ai/introduction/quickstart`) and SDK docs
-  (`docs.typesafe.ai/sdk/python`, `/sdk/javascript`).
-- **`jev_router_live` (the Claude Code "JEV Router") facts to preserve** — full design in
-  `ARCHITECTURE.md` §16:
-  - Auth is `JEV_API_KEY` only; `TYPESAFE_API_KEY` must never appear in `src/jev_router_live/`
-    (a test enforces it). There is one Jev client (`stdlib_router.py`; `sdk_router.py` is the
-    opt-in alternative behind `router.ask_jev`) — do not add another.
-  - Jev is called once per fresh user turn. Tool continuations, resent copies of the same turn
-    (same prompt + same conversation length; Claude Code 2.1.282 sends a turn's first request
-    twice) and auxiliary calls reuse a pinned model. The conversation key strips injected
-    `<system-reminder>` blocks.
-  - The proxy reads `/v1/models` itself on the first routed turn with Claude Code's own
-    credential (Claude Code's own discovery skips subscription logins); JEV is offered the
-    newest model per tier, cheapest first; fallback ids are the verified static `TIERS`.
-  - Logging: `record()` (file only) gets safe metadata per decision; prompts only under
-    `JEV_DEBUG`. Status files/`--settings` file live in `<tempdir>/jev-claude/` only if that
-    directory is owned by the user and 0700 (`status.private_dir()`).
-  - Real verification: `tests/live/test_live_jev_api.py` (opt-in, `JEV_LIVE_TESTS=1` + real
-    key) and real `jev-claude -p` runs (against `scripts/fake_jev.py` if the real API is not
-    reachable). Tests in `tests/live/` are isolated from `~/.jev-claude.log` and
-    `/tmp/jev-claude` by `tests/live/conftest.py`.
-- **`jev-router run --agent <name>` actually launches the agent now**, via
-  `AgentAdapter.launch_command(model)` + `subprocess.run`, after one JEV routing decision at
-  session start. This is session-start routing only, not per-turn — `jev_router`'s own
-  `transport/` only sends outbound; nothing listens for mid-session requests. Per-turn routing
-  via a live local proxy exists as a separate package, `src/jev_router_live/` (`jev-claude` /
-  `jev-codex` / `jev-explain`; see `ARCHITECTURE.md` §16 and `src/jev_router_live/README.md`) —
-  it does not share code with `jev_router` and is not part of the adapter/core/contracts
-  pipeline described above. `launch_command` was verified against each real installed CLI's
-  `--help`, not
-  guessed: `claude --model <m>` and `hermes chat --model <m>` are correct; `codex --model <m>`
-  is unverified (binary not available to test against). `opencode.launch_command` and
-  `deepagents.launch_command` both raise `NotImplementedError` rather than emit a broken
-  command — opencode's interactive CLI has no top-level `--model` flag, and deepagents has no
-  CLI binary at all. `HermesAdapter.detect()` now uses `shutil.which("hermes")` like every
-  other adapter (it was hardcoded to always return `False`). The Reverse Proxy and SDK Adapter
-  integration strategies in `docs/quickstart.md` remain unimplemented.
-- **`cli/run.py` resolves `launch_command`'s argv[0] via `shutil.which()` before calling
-  `subprocess.run`.** A bare `"claude"` fails Windows's `CreateProcess` even when it's on PATH
-  and `shutil.which` finds it — the real executable there is a `.CMD` shim (e.g. `claude.CMD`)
-  and the extensionless name doesn't resolve the same way `cmd.exe` resolves it. Passing the
-  resolved full path fixes it on both Windows and POSIX. Verified live: `jev-router run --agent
-  claude_code` now actually launches `claude` (previously: `FileNotFoundError` dumped as a raw
-  traceback). Missing-binary and launch-failure cases print a clean one-line error and return 1
-  instead of crashing.
-- **`jev-router run` now takes `--prompt`/`-p`.** Without it, JEV is asked to route an empty
-  string and — live-verified — reliably returns confidence around 0.27 (below the `low`
-  threshold), so `core/policy.py` falls back (`reason=low_confidence_keep_current`) instead of
-  routing. The same real prompt live-verified confidence 0.97 for the same tier. Always pass
-  `--prompt` for a real routing decision; omitting it is a deliberate no-signal passthrough,
-  not a bug.
-- **`ClaudeCodeAdapter.launch_command` now translates catalog ids to real Claude Code
-  aliases** (`_MODEL_ALIASES` in `adapters/claude_code/adapter.py`: `anthropic/claude-sonnet`
-  → `sonnet`, `anthropic/claude-opus` → `opus`), fixing the "isn't described by this version's
-  model catalog" error `claude --model anthropic/claude-sonnet` produced before. Only these two
-  ids are mapped — `openai/coding-strong` and any other catalog id still pass through
-  unchanged, since only Claude Code's own aliases have been verified. `codex`/`hermes`/
-  `opencode` still receive the router's internal catalog id as-is; only `codex`'s `--model`
-  flag is documented to accept a bare model name, and none of the three have a verified
-  translation table the way `claude_code` now does.
-- **`cli/run.py`'s `_candidates()` now sets real `tier`/`capabilities`/`compatible_agents`**
-  via `_KNOWN_MODELS`, fixing model auto-detection. Previously every catalog entry got
-  `ModelSpec`'s bare defaults (`tier="balanced"`, identical capabilities, no
-  `compatible_agents`), so a JEV `"strong"` recommendation could never match any candidate's
-  tier and silently fell back to whichever entry the fallback tie-break happened to prefer.
-  Worse: with no `"fast"`-tier candidate in the default catalog at all, *every* `"fast"`
-  recommendation (the common case — most tasks are simple) fell back to the
-  highest-capability candidate, meaning trivial tasks were silently routed to `opus` — the
-  opposite of what "fast" means. Fixed by adding `anthropic/claude-fable` (real alias `fable`,
-  verified via `claude --help`) and `anthropic/claude-haiku` (real alias `haiku` — not listed
-  in `--help`'s examples but confirmed working: `claude --model haiku` passes model validation
-  and proceeds to a real API call, unlike a deliberately fake model name, which errors
-  immediately with `unrecognized_model`) as genuine fast-tier catalog entries, and assigning
-  real tier/capability/compatible-agent metadata to all five default ids. `fable` and `haiku`
-  share the same fast-tier capability score and `fable` is listed first, so it wins ties
-  deterministically; reorder `models.allow` to prefer `haiku` instead. Live-verified all three
-  tiers now resolve distinctly for `claude_code`: trivial → `anthropic/claude-fable`, medium →
-  `anthropic/claude-sonnet`, complex → `anthropic/claude-opus`. `compatible_agents` also now
-  correctly excludes `openai/coding-strong` from ever winning a `claude_code` launch. Ids not
-  in `_KNOWN_MODELS` (e.g. a user's custom catalog addition) still fall back to `ModelSpec`'s
-  lenient defaults rather than being rejected.
-- README's Roadmap section was removed (it was pre-implementation and out of date); README no
-  longer tracks phase-by-phase progress. Trust `src/` and `ARCHITECTURE.md` over README prose
-  if either ever disagrees with it.
+- **One package: `src/jev_router_live/`.** The earlier session-start router (`src/jev_router/`,
+  its adapters/core/contracts, `configs/`, the `jev-router` command and their tests) was removed;
+  it lives only in git history. Don't reintroduce a second router, Jev client or proxy.
+- **`ARCHITECTURE.md` is the design source of truth — read it directly.** `docs/quickstart.md`
+  is the user guide; `src/jev_router_live/README.md` is the package guide. `docs/superpowers/`
+  holds dated historical design notes, some about the removed package — not current guidance.
+- **Tests:** `tests/live/` (unit + proxy-integration, Jev mocked) and
+  `tests/live/test_live_jev_api.py` (real Jev, opt-in). `python -m pytest` passes (92 tests,
+  3 skipped live-API tests, as of this writing). CI (`.github/workflows/ci.yml`) runs pytest on
+  Python 3.11 and 3.12 for every PR. There is no linter, formatter, type-checker or lockfile;
+  don't invent tool commands.
+- **Verified against real Claude Code 2.1.282** (`jev-claude`, interactive and `-p`), with Jev
+  answered by `scripts/fake_jev.py` because the real API wasn't reachable from the test
+  environment. The request/response schema matches TypeSafe's quickstart
+  (`docs.typesafe.ai/introduction/quickstart`). The real-API test still needs to be run with a
+  real key.
 
 ## Commands
 
-- Python **>= 3.11**, `src/` layout, setuptools build, package name `jev_router`.
-- **Zero runtime dependencies (`dependencies = []`) — stdlib only.** Adding a dependency is a
-  significant decision; justify it (ARCHITECTURE.md §8: dependency rules). `pytest` is a
-  test-only extra (`[project.optional-dependencies] test = ["pytest"]`), not a runtime dep.
-- Install: `pip install -e .` (exposes the `jev-router` console script →
-  `jev_router.cli.main:main`, which dispatches to `run`/`agents`/`models`/`status`/
-  `explain`/`doctor` subcommands). For development, `pip install -e ".[test]"` to get pytest.
-- All tests: `python -m pytest`
-- One file / one test: `python -m pytest tests/unit/test_policy.py` or
-  `python -m pytest tests/unit/test_policy.py::test_name`
-- Config used at runtime: `configs/default.yaml`, `configs/example.yaml`.
+- Python **>= 3.11**, `src/` layout, setuptools, distribution name `jev-router`.
+- **Zero runtime dependencies (`dependencies = []`), stdlib only.** `pytest` is the `test`
+  extra; `typesafe-sdk` is the optional `typesafe` extra used only with `JEV_CLIENT=sdk`.
+- Install: `pip install -e ".[test]"` → console scripts `jev-claude`, `jev-codex`,
+  `jev-explain`.
+- All tests: `python -m pytest -q`; one test: `python -m pytest tests/live/test_live_policy.py::name`.
+- Real Jev: `JEV_LIVE_TESTS=1 JEV_API_KEY=… python -m pytest tests/live/test_live_jev_api.py -s`.
+- Real Claude Code without Jev access: `python scripts/fake_jev.py 8765`, then
+  `JEV_ENDPOINT=http://127.0.0.1:8765/v1/systemone JEV_API_KEY=local jev-claude -p "…"`.
 
-## Architecture and dependency direction
+## Module boundaries
 
-Packages under `src/jev_router/`: `cli/`, `core/`, `contracts/`, `adapters/`, `providers/`,
-`jev/`, `transport/`, `state/`, `config/`, `observability/`, `security/`.
-
-Dependency direction is one-way: **CLI → adapters → core → contracts**.
-- `core/` imports `contracts/` only. Providers and transports are *injected*, never imported by
-  policy/router code.
-- Agent protocol knowledge (parsing, proxies, version quirks) → `adapters/<agent>/` only.
-  Never `if agent == "claude":` in `core/`.
-- Upstream model API knowledge (endpoints, auth, streaming) → `providers/`.
-- HTTP/SSE/WS forwarding → `transport/`. Per-turn/session persistence → `state/`.
-  Secrets/redaction → `security/`. Logging/metrics/explanations → `observability/`.
-- Adding an agent = new `adapters/<foo>/` + fixtures + tests. It must not require touching the
-  core router, policy, JEV auth, state, or registry.
+- `config.py` — every routing knob (tiers + verified static model ids, thresholds, override
+  phrases, Jev questions). Change thresholds here, nowhere else.
+- `policy.py` — `decide()`, pure and total. No I/O, no HTTP.
+- `stdlib_router.py` — **the** Jev client (`sdk_router.py` is the opt-in alternative, dispatched
+  by `router.ask_jev`). It knows nothing about Claude Code. Don't add another client.
+- `proxy.py` — the only module that understands the Anthropic wire format: fresh-turn
+  detection, conversation pinning, model catalog, request rewriting, streaming relay.
+- `codex_proxy.py` — the Codex (Responses API) equivalent; shares the client and policy.
+- `status.py` / `explain.py` / `bin/jev_statusline.py` — decision file and its readers.
+- `bin/jev_claude.py` — launcher: environment for the `/model` "JEV Router" row, proxy
+  lifecycle, restores the saved default model on exit.
 
 ## Routing invariants (must not regress)
 
-- **JEV is the only routing authority.** `TYPESAFE_API_KEY` is read exclusively by
-  `jev/client.py`; no other module may build JEV auth headers. Never hard-code, commit, or
-  print the key. `core/classifier.py` must not grow into an independent LLM router.
-- **One routing decision per fresh user turn.** Pin the selected model for the whole tool loop;
-  tool results, continuations, telemetry, and title/summary calls bypass routing.
-- **Explicit user model choice always wins** over automatic routing.
-- **Fail open, but never silently:** missing key, timeout, 5xx, or malformed JEV response →
-  fall back to current/default model and *record why* (current → agent default → configured
-  fallback → clear error).
-- **State is scoped `agent + session + turn`.** Sub-agent decisions must not overwrite the
-  parent session's pinned model. No global `current_model`.
-- Policy sits between JEV and execution: JEV output → policy (confidence thresholds, override,
-  model availability, context/downgrade protection) → resolver → concrete model.
-- Never log prompts, keys, auth headers, or raw responses by default (`configs/default.yaml`
-  ships `privacy.log_prompts: false`, `send_repository_content: false` — keep those semantics).
-
-## Configuration
-
-- Precedence (implemented in `config/loader.py`): **CLI args > env vars > project config >
-  user config > defaults**.
-- `configs/default.yaml`: `jev.timeout_ms: 1500`, `deadline_ms: 3000`, `max_retries: 1`.
-  Routing is on the interactive hot path — keep calls short; retry only within the deadline.
-- Routing is disabled (passthrough) when `TYPESAFE_API_KEY` is absent — the CLI must report
-  this clearly instead of crashing a running session.
+- **Auth is `JEV_API_KEY` only.** `TYPESAFE_API_KEY` must never appear in
+  `src/jev_router_live/` (a test enforces it). Never hard-code, commit, print or log the key.
+- **Jev is called once per fresh user turn.** Tool continuations, resent copies of the same
+  turn (same prompt + same conversation length; Claude Code 2.1.282 sends a turn's first
+  request twice), `[SUGGESTION MODE:` prompt-suggestion requests and auxiliary calls never call
+  Jev; they reuse a pinned model.
+- **The conversation key** is the session id + the user-authored first-message text (injected
+  `<system-reminder>` blocks stripped). Sub-agents get their own key; nothing is global.
+- **Explicit choice wins.** A non-sentinel model passes through untouched; a prompt override
+  ("use opus") beats Jev.
+- **Jev recommends, `decide()` decides.** Low confidence never downgrades; cache protection
+  applies only after the first decision; unavailable/unknown models are never used.
+- **Fail open, visibly.** No key, timeout, 5xx, 4xx, malformed answer or crash → a real model
+  (never the sentinel), within the 3 s Jev deadline, with a log line. Retry only
+  timeouts/network/5xx, once.
+- **Rewrite minimally.** Only `model` and fields the chosen model cannot accept.
+- **Stream, don't buffer** (except `/v1/models`). Keep framing valid (never
+  `Transfer-Encoding` next to `Content-Length`). Only client-side resets are quiet; upstream
+  failures are logged.
+- **Privacy.** The decision log (`record()`) gets safe metadata only; prompts appear only in
+  the owner-only status file and under `JEV_DEBUG`. Files under `<tempdir>/jev-claude/` are
+  written only via `status.private_dir()` / `write_private()`.
+- **Don't widen Claude Code's permissions** (no `--add-dir`, no settings beyond the status line).
 
 ## Testing rules
 
-- pytest only; `pyproject.toml` `[tool.pytest.ini_options] testpaths = ["tests"]`.
-- **Mock the JEV API in all default tests.** Live tests are opt-in: `JEV_LIVE_TESTS=1` plus
-  `TYPESAFE_API_KEY` in the environment; never put a real key in fixtures.
-- Adapter tests are fixture-driven (`tests/fixtures/`): capture sanitized upstream requests
-  when a protocol changes, note the agent version, and assert expected routing behavior.
-- Every non-trivial change to policy, resolution, overrides, fresh-turn detection, state
-  isolation, or fallback needs a test — these are the pure-logic hot spots.
-
-## Key contracts and modules
-
-- `contracts/requests.py` — `NormalizedRequest` (agent, session, turn, prompt, current model,
-  available models, context tokens, tools, explicit override, routing mode). Optional fields
-  stay nullable; never invent data an adapter can't reliably provide.
-- `contracts/models.py` — `ModelSpec` capability metadata (coding, reasoning, tool_use, context,
-  speed, cost, context window, vision, availability, agent compatibility).
-- `jev/schema.py` — `JEVDecision` (selected model/profile, confidence, task complexity,
-  reasoning/tool signals, explanation). Normalize external JEV responses at this boundary only;
-  raw provider/agent formats must not spread past it.
-- `core/overrides.py` — explicit human model choice detection; consulted before JEV.
-- `core/resolver.py` — picks a concrete model:
-  `available ∩ agent-compatible ∩ provider-compatible ∩ policy-allowed`.
-- `state/` — `memory.py` (in-process) and `sqlite.py` (persistent) behind `store.py`;
-  holds `TurnState` (session, turn, selected model, selected_at, confidence, reason).
-- `adapters/registry.py` / `providers/registry.py` — discovery points; adapters and providers
-  register here instead of being wired into `core/` by hand.
-
-## Common workflows
-
-**Add a new agent adapter `foo`:**
-1. Create `src/jev_router/adapters/foo/` with `adapter.py` (+ parser/proxy/config as needed).
-2. Implement normalization into `NormalizedRequest`, fresh-turn detection, manual-override
-   detection, and `apply_model` — reuse `jev/client.py` for JEV auth, never your own.
-3. Register it in `adapters/registry.py`.
-4. Add sanitized request/response fixtures + tests: fresh turn, tool continuation, manual
-   model, auxiliary call, malformed request, unavailable model.
-5. Do **not** modify `core/` to understand `foo`.
-
-**Add a provider:** implement under `providers/`, register in `providers/registry.py`, add
-`ModelSpec` entries, cover streaming + error semantics with tests. Providers never contain
-routing policy and never learn *why* a model was chosen.
-
-**Change routing behavior:** policy/resolution logic lives in `core/policy.py` +
-`core/resolver.py` as pure, typed, deterministic functions with thresholds in config — not as
-magic constants scattered through adapters. Update `ARCHITECTURE.md` alongside.
+- pytest only; mock Jev in all default tests (`route=` injection into `start_proxy`, or
+  monkeypatching `stdlib_router._post`). Never put a real key in fixtures.
+- Proxy tests run against a local fake Anthropic upstream (see
+  `tests/live/test_live_hardening.py`); model new Claude Code request shapes on captured real
+  traffic and note the Claude Code version.
+- `tests/live/conftest.py` isolates `~/.jev-claude.log` and `<tempdir>/jev-claude`; keep new
+  tests inside `tests/live/` so they inherit it.
+- Every non-trivial change to policy, turn detection, pinning, catalog, rewriting, streaming,
+  fallback or file handling needs a test.
 
 ## Definition of done
 
-- [ ] Code landed in the correct layer (see dependency direction above).
-- [ ] Explicit overrides, fresh-turn pinning, and fail-open fallback still hold.
+- [ ] Change lives in the right module (boundaries above); no second client/router/proxy.
+- [ ] Routing invariants above still hold.
 - [ ] No secrets or prompt content added to logs/errors.
 - [ ] `python -m pytest` passes; new tests added.
-- [ ] Behavior change reflected in `ARCHITECTURE.md` (not `docs/*`).
-
-Full behavioral contract: `ARCHITECTURE.md`. Product/roadmap context: `README.md`.
+- [ ] Behavior change reflected in `ARCHITECTURE.md`; user-visible change in `README.md` /
+      `docs/quickstart.md`.
+- [ ] For changes to how Claude Code traffic is handled: verified with a real `jev-claude` run.
