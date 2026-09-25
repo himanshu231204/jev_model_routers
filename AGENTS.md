@@ -14,7 +14,7 @@ Flow: coding agent → adapter → normalized request → router → policy → 
 - **`tests/` exists and is populated** under `tests/unit/`, `tests/integration/`,
   `tests/contract/`, `tests/adapters/`, `tests/routing/`, `tests/fixtures/`
   (see `ARCHITECTURE.md` §9). `tests/live/` covers `jev_router_live` (§16) the same way.
-  `python -m pytest` passes (103 tests as of this writing). Add
+  `python -m pytest` passes (161 tests, 3 skipped live-API tests, as of this writing). Add
   tests alongside any change per the testing rules below.
 - **No CI workflows, linter, formatter, type-checker, pre-commit, or lockfile exist.** Do not
   invent tool commands or add tooling unless asked. Verification today = import check + pytest.
@@ -34,6 +34,25 @@ Flow: coding agent → adapter → normalized request → router → policy → 
   `{answers: {tier: {choice, confidence}}}` response. Both shapes are verified against
   TypeSafe's quickstart (`docs.typesafe.ai/introduction/quickstart`) and SDK docs
   (`docs.typesafe.ai/sdk/python`, `/sdk/javascript`).
+- **`jev_router_live` (the Claude Code "JEV Router") facts to preserve** — full design in
+  `ARCHITECTURE.md` §16:
+  - Auth is `JEV_API_KEY` only; `TYPESAFE_API_KEY` must never appear in `src/jev_router_live/`
+    (a test enforces it). There is one Jev client (`stdlib_router.py`; `sdk_router.py` is the
+    opt-in alternative behind `router.ask_jev`) — do not add another.
+  - Jev is called once per fresh user turn. Tool continuations, resent copies of the same turn
+    (same prompt + same conversation length; Claude Code 2.1.282 sends a turn's first request
+    twice) and auxiliary calls reuse a pinned model. The conversation key strips injected
+    `<system-reminder>` blocks.
+  - The proxy reads `/v1/models` itself on the first routed turn with Claude Code's own
+    credential (Claude Code's own discovery skips subscription logins); JEV is offered the
+    newest model per tier, cheapest first; fallback ids are the verified static `TIERS`.
+  - Logging: `record()` (file only) gets safe metadata per decision; prompts only under
+    `JEV_DEBUG`. Status files/`--settings` file live in `<tempdir>/jev-claude/` only if that
+    directory is owned by the user and 0700 (`status.private_dir()`).
+  - Real verification: `tests/live/test_live_jev_api.py` (opt-in, `JEV_LIVE_TESTS=1` + real
+    key) and real `jev-claude -p` runs (against `scripts/fake_jev.py` if the real API is not
+    reachable). Tests in `tests/live/` are isolated from `~/.jev-claude.log` and
+    `/tmp/jev-claude` by `tests/live/conftest.py`.
 - **`jev-router run --agent <name>` actually launches the agent now**, via
   `AgentAdapter.launch_command(model)` + `subprocess.run`, after one JEV routing decision at
   session start. This is session-start routing only, not per-turn — `jev_router`'s own

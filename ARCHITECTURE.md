@@ -260,11 +260,25 @@ calls, e.g. title generation). Injected `<system-reminder>` / `<environment_cont
 `<current_datetime>` blocks are stripped before the prompt reaches Jev, since they are noise to
 the router and measurably blunt its confidence.
 
+Two request shapes observed from Claude Code 2.1.282 are handled explicitly:
+
+- **Resent turns.** Claude Code sends a turn's first request twice (first with a short set of
+  `<system-reminder>` blocks and a trailing `role: system` message, then with the full set).
+  A fresh-turn request whose prompt *and* conversation length (user/assistant messages) equal
+  the last routed turn is treated as the same turn: the pinned model is reused and Jev is not
+  asked again. The same rule absorbs client retries after an API error. A genuinely repeated
+  prompt on a later turn has a longer conversation and is routed normally.
+- **Auxiliary calls on the sentinel.** Some internal calls (e.g. a status summary with no
+  tools) carry `jev-router` without belonging to a routed conversation. They run on the model
+  their session was most recently routed to — what the user would be on had they picked it —
+  else on the fallback tier's catalog model. They never call Jev.
+
 ### 16.4 Conversation-scoped pinning
 
 Each conversation gets a stable key (`conversation_key` / `codex_conversation_key`) derived from
-the session id plus the text of the first message — never from mutable fields the CLI rewrites
-between requests (cache-control breakpoints, metadata). The tier chosen for a fresh turn is
+the session id plus the user-authored text of the first message (injected `<system-reminder>`
+blocks stripped, since their set varies between requests of the same conversation) — never from
+mutable fields the CLI rewrites between requests (cache-control breakpoints, metadata). The tier chosen for a fresh turn is
 pinned against that key and reused by every follow-up request in the same turn, including
 sub-agent calls running through the same endpoint, which get their own key and can never leak a
 model choice into the parent conversation. This mirrors §7's "state is scoped `agent + session +
@@ -278,8 +292,16 @@ and why. It layers, in order: an explicit override phrase in the prompt ("use ha
 strong") beats everything; a missing/malformed Jev response falls back to the current tier
 (fail open, §7); low-confidence answers refuse to downgrade and cap how far they can upgrade;
 and a downgrade is skipped outright once the conversation is large enough that rebuilding the
-prompt cache would cost more than the downgrade saves. Every branch is reviewable in one place
-and unit-tested independently of any HTTP or proxy code (`tests/live/test_live_policy.py`).
+prompt cache would cost more than the downgrade saves. That cache guard applies only once a
+model is pinned: a conversation's first decision (`first_turn=True`) has no cache to protect,
+so a system-prompt-heavy first request (~20k+ tokens) can still be routed down to Haiku. Every
+branch is reviewable in one place and unit-tested independently of any HTTP or proxy code
+(`tests/live/test_live_policy.py`).
+
+Jev recommends; `decide()` decides. The proxy maps Jev's exact model id back to a tier, runs
+the policy, and only then resolves the final tier to a concrete catalog id (Jev's exact id when
+policy accepted its tier). A Jev answer naming a model that was not offered is treated as no
+answer.
 
 ### 16.6 Request rewriting
 
@@ -291,15 +313,75 @@ know to avoid.
 
 ### 16.7 Observability
 
-Every routed decision — prompt, chosen model, confidence, Jev's raw request/response, and the
-policy reason — is written to a per-session file (`status.py`, mode 0600, OS temp dir, pruned
-after 7 days idle). Two consumers read it: the Claude Code status line (`bin/jev_statusline.py`)
-renders a one-line summary on every prompt render, and `jev-explain` / the bundled
-`$jev-explain` skill (`explain.py`) renders the full report on demand. Nothing routing-relevant
-is ever logged anywhere else; `log.py` is strictly for debug tracing gated by `JEV_DEBUG`.
+Three outputs, from least to most sensitive:
+
+- **Decision log** (`~/.jev-claude.log`, always on, file only — never stderr, so it cannot
+  corrupt Claude Code's TUI or `-p` output): one line of safe metadata per routed turn, e.g.
+  `turn=a6ba87d7ab94 decision=opus model=claude-opus-5-5 confidence=0.97 latency=412ms
+  reason=jev ctx~3406`, plus the model catalog and any routing/upstream failure. Never prompts,
+  keys, headers or bodies.
+- **Status file** (`status.py`): per session, the full decision including the prompt and Jev's
+  exact request/response, so `jev-explain` / the status line can show it. Kept in
+  `<tempdir>/jev-claude/`, which is only used if it is a real directory owned by the current
+  user and mode 0700 (on shared `/tmp`, a directory pre-created by another user is refused);
+  files are created 0600 atomically and pruned after 7 days idle.
+- **Debug tracing** (`JEV_DEBUG=1`, opt-in): adds per-request rewrite lines and the first 60
+  characters of each routed prompt.
 
 ### 16.8 Fail-open
 
-Exactly as in §7: a Jev timeout, malformed response, or missing API key never blocks a prompt.
-`router.py`'s `ask_jev` returns `None` on any failure (bounded by a real wall-clock deadline, not
-just a per-socket timeout), and `decide()` reads `None` as "keep the current tier."
+Exactly as in §7: routing never blocks or breaks a turn, and the sentinel never reaches the
+provider.
+
+| Failure | Behavior |
+|---|---|
+| `JEV_API_KEY` unset | `jev-claude` starts plain Claude Code, no proxy, no picker row |
+| Jev timeout / network error / 5xx | 1.5 s per attempt, one retry, 3 s hard wall-clock deadline, then keep the current tier (first turn: Opus) |
+| Jev 4xx (bad key, bad request) | no retry (it cannot succeed); keep the current tier |
+| Malformed answer, or a model that was not offered | treated as no answer |
+| Unexpected exception while routing | request is sent on the fallback catalog model, error logged |
+| Upstream unreachable | 502 with an Anthropic-shaped error body, logged |
+
+Each failure is logged; none is silent.
+
+### 16.9 Model catalog
+
+The models offered to Jev come from the account's own `/v1/models` catalog: the newest model
+in each tier, listed cheapest tier first (older versions of a tier are left out — they add
+noise and tokens to every Jev call). Claude Code's own gateway discovery never calls
+`/v1/models` for claude.ai-subscription logins (it requires an API key, `ANTHROPIC_AUTH_TOKEN`
+or `apiKeyHelper`), so the proxy reads the catalog itself on the first routed turn, reusing
+that request's credential and `anthropic-*` headers: one attempt per process, 2 s timeout. If
+it fails, routing uses the static ids in `config.py` `TIERS`, which are verified against Claude
+Code's shipped model catalog — no model id is ever invented. Fable is offered only with
+`JEV_ALLOW_FABLE=1` (it bills extra usage credits).
+
+### 16.10 Streaming and connections
+
+Every response except `/v1/models` is relayed as it arrives (`read1` loop, flushed per chunk),
+so SSE token streams reach Claude Code immediately; routing happens before the upstream request
+is sent, never during the stream. Status, headers and body pass through unchanged except
+framing: chunked stays chunked (re-framed for our side), fixed-length keeps its exact length,
+close-delimited closes. Forwarding upstream's `Transfer-Encoding: chunked` next to a
+`Content-Length` was the cause of the Windows `WinError 10054` resets (Node rejects the invalid
+response and resets the socket).
+
+Connection failures are split by side. A **client** reset (Claude Code dropping an idle
+keep-alive socket or exiting mid-stream; `WinError 10054/10053`, `BrokenPipeError`) is normal
+and only visible under `JEV_DEBUG`. An **upstream** failure (connect error, reset mid-stream)
+is a real problem: it is logged, and a stream cut mid-way is closed without a clean end so the
+client sees a truncated response rather than a fake success. Any other handler exception is
+logged with its traceback to the log file, never printed over the TUI.
+
+### 16.11 Authentication and verification
+
+The live proxy reads exactly one credential, `JEV_API_KEY` (from the environment, or
+`./.env`, `~/.jev-router.env`, `~/.jev-claude.env`); `TYPESAFE_API_KEY` is ignored by
+`jev_router_live` (a test enforces that no live module references it). `jev_router`'s
+session-start CLI (§1–§15) still uses `TYPESAFE_API_KEY`. Anthropic credentials are Claude
+Code's own and pass through untouched.
+
+Verification layers: unit/integration tests with a mocked Jev (`tests/live/`), an opt-in test
+against the real Jev API (`tests/live/test_live_jev_api.py`, `JEV_LIVE_TESTS=1` + a real key),
+and real Claude Code runs via `jev-claude` (optionally against `scripts/fake_jev.py`, a local
+System One stand-in, when the real API is not reachable).
