@@ -268,6 +268,11 @@ Two request shapes observed from Claude Code 2.1.282 are handled explicitly:
   the last routed turn is treated as the same turn: the pinned model is reused and Jev is not
   asked again. The same rule absorbs client retries after an API error. A genuinely repeated
   prompt on a later turn has a longer conversation and is routed normally.
+- **Prompt suggestions and local commands.** After each turn, interactive Claude Code asks, in
+  the same conversation, for a suggested next prompt (`[SUGGESTION MODE: …`); that is not a
+  user turn and never calls Jev or changes the pinned model. Transcripts of local slash
+  commands (`<command-name>/model</command-name>`, `<local-command-stdout>…`) are stripped from
+  the prompt sent to Jev.
 - **Auxiliary calls on the sentinel.** Some internal calls (e.g. a status summary with no
   tools) carry `jev-router` without belonging to a routed conversation. They run on the model
   their session was most recently routed to — what the user would be on had they picked it —
