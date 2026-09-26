@@ -6,11 +6,13 @@
 FROM node:20-slim AS base
 
 # Claude Code and Codex are Node CLIs; JEV Router itself is pure-stdlib Python with no
-# runtime dependencies (see pyproject.toml).
+# runtime dependencies (see pyproject.toml). Pinned versions: unpinned `npm install -g` tracks
+# whatever npm currently reports as "latest", which has broken the image build when a package's
+# `latest` dist-tag pointed at a version whose tarball 404s on the registry. Bump these by hand.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install -g @anthropic-ai/claude-code @openai/codex \
+    && npm install -g @anthropic-ai/claude-code@2.1.283 @openai/codex@0.157.0 \
     && npm cache clean --force
 
 # Build the wheel from this checkout rather than pulling from PyPI, so the image always
