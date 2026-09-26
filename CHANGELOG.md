@@ -9,6 +9,8 @@ adheres to [Semantic Versioning](https://semver.org/). Releases are published to
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-26
+
 ### Added
 - Docker image (`Dockerfile`, published to `ghcr.io/himanshu231204/jev_model_routers` on
   each tagged release) bundling `jev-claude`/`jev-codex` with the CLIs they wrap.
@@ -54,5 +56,6 @@ First public release: per-turn model routing for Claude Code, decided by TypeSaf
 - Optional `typesafe` extra to call Jev through the official `typesafe-sdk` (`JEV_CLIENT=sdk`).
 - Zero runtime dependencies; Python 3.11+.
 
-[Unreleased]: https://github.com/himanshu231204/jev_model_routers/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/himanshu231204/jev_model_routers/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/himanshu231204/jev_model_routers/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/himanshu231204/jev_model_routers/releases/tag/v0.1.0
