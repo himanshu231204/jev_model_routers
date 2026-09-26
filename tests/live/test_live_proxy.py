@@ -116,3 +116,16 @@ def test_new_turn_prompt_trailing_system_after_tool_result_is_continuation():
         ],
     }
     assert new_turn_prompt(body) is None
+
+
+def test_convos_keeps_recently_used_conversation():
+    """Eviction is least-recently-used: a long main conversation that keeps being touched
+    must not lose its pinned model because many sub-agents started after it."""
+    from jev_router_live.proxy import _Convos
+
+    convos = _Convos(limit=3)
+    convos.get("main").tier = "haiku"
+    for i in range(10):
+        convos.get(f"sub{i}")
+        assert convos.get("main").tier == "haiku"
+    assert len(convos._data) <= 3

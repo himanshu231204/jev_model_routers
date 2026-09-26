@@ -130,3 +130,38 @@ def test_decide_clamps_to_available_tiers():
     )
     assert result["tier"] == "opus"
     assert result["reason"] == "jev+unavailable/no-change"
+
+
+def test_detect_override_aliases_need_an_explicit_mode_word():
+    """Tier aliases (fast/balanced/strong/long) are ordinary English in coding prompts, so they
+    only count as an override when phrased as a mode/model/tier or at the end of a clause;
+    otherwise Jev would be silently bypassed (e.g. "use fast lookups" forcing Haiku)."""
+    assert detect_override("switch to fast mode") == "haiku"
+    assert detect_override("use the strong model") is None  # article: not the override phrase
+    assert detect_override("use strong model for this") == "opus"
+    assert detect_override("switch to balanced tier please") == "sonnet"
+    assert detect_override("please switch to fast.") == "haiku"
+    assert detect_override("switch to fast") == "haiku"
+    assert detect_override("use sonnet to rename this") == "sonnet"  # model names need no suffix
+    for prompt in [
+        "Fix the crash with long filenames",
+        "Implement this with balanced parentheses checking",
+        "Refactor the parser with strong typing",
+        "Switch the cache to use fast lookups",
+        "Add retries on long-running jobs",
+    ]:
+        assert detect_override(prompt) is None, prompt
+
+
+def test_decide_is_total_for_malformed_confidence():
+    """A non-numeric or NaN confidence from Jev must not raise; it is treated as no confidence,
+    so it can never downgrade."""
+    for bad in [None, "0.9", True, float("nan"), [0.9]]:
+        result = decide(
+            prompt="fix this",
+            jev={"choice": "haiku", "confidence": bad},
+            current="opus",
+            available=["haiku", "sonnet", "opus"],
+        )
+        assert result["tier"] == "opus", bad
+        assert result["reason"] == "low-confidence-no-downgrade/no-change", bad
