@@ -1,6 +1,7 @@
 """The pure routing decision function: turns a Jev answer into the tier to run."""
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from jev_router_live.config import OVERRIDE_PATTERNS, TIER_NAMES, THRESHOLDS, rank_of
@@ -62,7 +63,13 @@ def decide(
 
     target = jev["choice"]
 
-    if jev.get("confidence", 1.0) < THRESHOLDS.min_confidence:
+    # Jev's answer is external input: a missing confidence means "confident", but a malformed
+    # one (null, string, bool, NaN) must not raise here or pass as confident.
+    confidence = jev.get("confidence", 1.0)
+    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not math.isfinite(confidence):
+        confidence = 0.0
+
+    if confidence < THRESHOLDS.min_confidence:
         if rank_of(target) < rank_of(current):
             return settle(current, "low-confidence-no-downgrade")
         ceiling = max(rank_of(current), rank_of(THRESHOLDS.uncertain_ceiling))

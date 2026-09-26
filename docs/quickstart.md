@@ -75,7 +75,9 @@ jev-claude --resume                      # sessions, resume and permissions work
   `claude-haiku-4-5-20251001 (p=0.97) · my-project · 21% context`.
 - **`/model` → any real model** turns routing off for the session (status line: `⏸ manual`).
   **`/model` → JEV Router** turns it back on.
-- Say it in the prompt to force a tier for one turn: "use opus …", "switch to fast …".
+- Say it in the prompt to force a tier for one turn: "use opus …", "switch to fast mode …".
+  Aliases like fast/strong need "mode", "model" or "tier" after them, so "with long filenames"
+  is not read as an override.
 
 The `README.md` has screenshots of each of these steps.
 

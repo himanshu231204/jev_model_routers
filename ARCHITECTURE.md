@@ -137,7 +137,11 @@ choice into the main conversation.
 `policy.decide()` is pure and total: given Jev's answer (mapped from exact model id to tier),
 the pinned tier and the tiers the account can run, it returns the final tier and a reason.
 
-1. **Prompt override** — "use opus", "switch to fast", … beats everything (`override`).
+1. **Prompt override** — "use opus", "switch to fast mode", … beats everything (`override`).
+   Tier names always count; the aliases (fast/balanced/strong/long, luna/terra/sol/astra) only
+   when followed by "mode"/"model"/"tier" or ending the clause, so "with long filenames" or
+   "use fast lookups" is left to Jev.
+   A malformed Jev confidence (null, non-numeric, NaN) is treated as low confidence.
 2. **No usable answer** (failure, malformed, a model that was not offered) — keep the current
    tier (`jev-unavailable`).
 3. **Low confidence** (below `THRESHOLDS.min_confidence`, 0.3) — never downgrade; cap upgrades
@@ -186,7 +190,12 @@ questions barely change latency).
 Latency budget (interactive hot path): 1.5 s per attempt, at most one retry — only for
 timeouts, network errors and 5xx, never 4xx — and a hard 3 s wall-clock deadline enforced
 outside the socket timeouts. Measured ~0.3 s warm, ~1 s cold. `JEV_CLIENT=sdk` uses the official
-`typesafe-sdk` with the same key and limits.
+`typesafe-sdk` (typed `Score`/`Choice` questions, `TypeSafeClient.system_one`) with the same key,
+questions and limits: the SDK's per-request `timeout` is set to 1.5 s (its default is 10 s), its
+`RetryPolicy` retries once with no backoff and only 5xx/timeouts/connection errors (its defaults
+also retry 408/429 and honor `Retry-After`), and the call runs under the same 3 s wall-clock
+deadline. It returns the same dict as the stdlib client, including the three scores and the raw
+response. `JEV_ENDPOINT` points either client at another System One URL.
 
 ---
 

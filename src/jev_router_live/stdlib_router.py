@@ -11,7 +11,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from typing import Any
+from typing import Any, Callable
 
 from jev_router_live.config import (
     COMPLEXITY_MAX_SCORE,
@@ -35,19 +35,19 @@ def _post(payload: dict, headers: dict, timeout_s: float) -> dict:
         return json.loads(resp.read().decode() or "{}")
 
 
-def _post_with_wall_clock_timeout(payload: dict, headers: dict, timeout_s: float) -> tuple[dict | None, Exception | None]:
-    """Runs one HTTP attempt on a daemon thread, bounded by a real wall-clock deadline.
+def call_with_deadline(fn: Callable[[], Any], timeout_s: float) -> tuple[Any, Exception | None]:
+    """Runs ``fn`` on a daemon thread, bounded by a real wall-clock deadline.
 
-    ``urlopen``'s own timeout only bounds individual socket operations (connect, each read)
-    -- a request whose DNS/connect/TLS/read steps are each fast but add up can run far longer
-    than that. Joining a daemon thread against a wall-clock timeout makes the deadline real
-    without hanging process exit if the thread is still stuck.
+    Client timeouts only bound individual socket operations (connect, each read) -- a request
+    whose DNS/connect/TLS/read steps are each fast but add up can run far longer than that.
+    Joining a daemon thread against a wall-clock timeout makes the deadline real without
+    hanging process exit if the thread is still stuck. Shared with ``sdk_router``.
     """
     result: dict[str, Any] = {}
 
     def target() -> None:
         try:
-            result["raw"] = _post(payload, headers, timeout_s)
+            result["raw"] = fn()
         except Exception as exc:  # noqa: BLE001 - reported to caller, not raised here
             result["error"] = exc
 
@@ -59,6 +59,11 @@ def _post_with_wall_clock_timeout(payload: dict, headers: dict, timeout_s: float
     if "error" in result:
         return None, result["error"]
     return result.get("raw"), None
+
+
+def _post_with_wall_clock_timeout(payload: dict, headers: dict, timeout_s: float) -> tuple[dict | None, Exception | None]:
+    """Runs one HTTP attempt, bounded by a real wall-clock deadline."""
+    return call_with_deadline(lambda: _post(payload, headers, timeout_s), timeout_s)
 
 
 def _is_client_error(err: Exception) -> bool:
